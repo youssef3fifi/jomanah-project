@@ -1,6 +1,6 @@
 # 🏥 PharmaCare Management System
 
-A professional, production-ready Pharmacy Management System built with PHP backend and modern frontend. Designed for easy deployment on AWS infrastructure with complete inventory, sales, and customer management features.
+A professional Pharmacy Management System built with PHP backend and modern frontend. Features complete inventory, sales, and customer management with **in-memory storage** using PHP sessions - perfect for testing, development, and demonstrations without database setup.
 
 ## 📋 Table of Contents
 
@@ -40,14 +40,20 @@ A professional, production-ready Pharmacy Management System built with PHP backe
 
 ### Backend
 - **Language**: PHP 7.4+
-- **Database**: MySQL 5.7+ / MariaDB 10.3+
-- **Architecture**: RESTful API with PDO
+- **Storage**: In-Memory PHP Sessions
+- **Architecture**: RESTful API
 - **Server**: Apache with mod_rewrite
 
 ### Frontend
 - **Core**: HTML5, CSS3, Vanilla JavaScript
 - **Design**: Modern, responsive UI with pharmacy theme
 - **Features**: Real-time updates, modals, notifications
+
+### Data Storage
+- **Type**: In-Memory Storage using PHP Sessions
+- **Persistence**: Data persists during the session lifetime
+- **Reset**: Data resets when server restarts
+- **Purpose**: Perfect for testing, development, and demonstrations
 
 ## 📁 Project Structure
 
@@ -60,7 +66,7 @@ pharmacy-management-system/
 │   │   ├── sales.php          # Sales transactions
 │   │   └── reports.php        # Reports and analytics
 │   ├── config/
-│   │   ├── database.php       # Database connection
+│   │   ├── storage.php        # In-memory storage with sessions
 │   │   └── cors.php           # CORS configuration
 │   ├── includes/
 │   │   └── functions.php      # Helper functions
@@ -80,8 +86,6 @@ pharmacy-management-system/
 │       ├── inventory.js       # Inventory logic
 │       ├── sales.js           # Sales logic
 │       └── customers.js       # Customer logic
-├── database/
-│   └── schema.sql             # Database schema
 ├── .gitignore
 └── README.md
 ```
@@ -89,8 +93,7 @@ pharmacy-management-system/
 ## 🚀 Local Development Setup
 
 ### Prerequisites
-- PHP 7.4 or higher
-- MySQL 5.7+ or MariaDB 10.3+
+- PHP 7.4 or higher with session support
 - Apache web server with mod_rewrite enabled
 - Web browser (Chrome, Firefox, Safari, Edge)
 
@@ -102,40 +105,14 @@ pharmacy-management-system/
    cd jomanah-project
    ```
 
-2. **Set Up Database**
-   ```bash
-   # Log into MySQL
-   mysql -u root -p
-   
-   # Import the schema
-   source database/schema.sql
-   ```
-
-3. **Configure Backend**
-   
-   The system uses environment-based configuration. For local development, it uses default values:
-   - Host: `localhost`
-   - Database: `pharmacy_db`
-   - Username: `root`
-   - Password: `` (empty)
-   
-   To customize, set environment variables:
-   ```bash
-   export DB_HOST="localhost"
-   export DB_NAME="pharmacy_db"
-   export DB_USER="root"
-   export DB_PASSWORD="your_password"
-   export DB_PORT="3306"
-   ```
-
-4. **Configure Frontend**
+2. **Configure Frontend**
    
    Edit `frontend/js/config.js`:
    ```javascript
    const API_BASE_URL = 'http://localhost/backend';
    ```
 
-5. **Set Up Apache Virtual Host** (Optional but recommended)
+3. **Set Up Apache Virtual Host** (Optional but recommended)
    
    Create a virtual host configuration:
    ```apache
@@ -156,7 +133,7 @@ pharmacy-management-system/
    127.0.0.1 pharmacy.local
    ```
 
-6. **Start Development Server**
+4. **Start Development Server**
    
    Using PHP built-in server (for testing):
    ```bash
@@ -174,15 +151,21 @@ pharmacy-management-system/
    const API_BASE_URL = 'http://localhost:8000';
    ```
 
-7. **Access the Application**
+5. **Access the Application**
    
    Open your browser and navigate to:
    - Frontend: `http://localhost:8080` (or your virtual host)
    - Backend API: `http://localhost:8000` (or your backend URL)
 
-### Default Credentials
-- **Admin Username**: `admin`
-- **Admin Password**: `admin123`
+### Data Storage Notes
+- **Session-Based**: All data is stored in PHP sessions (`$_SESSION`)
+- **Sample Data**: Pre-loaded with 6 medicines, 3 customers, and 2 sales
+- **Persistence**: Data persists as long as the PHP session is active
+- **Reset**: Data resets when:
+  - Server restarts
+  - Session expires (default: 24 minutes of inactivity)
+  - Browser cookies are cleared
+- **Perfect For**: Testing, development, demonstrations, and prototyping
 
 ## ☁️ AWS EC2 Deployment
 
@@ -199,12 +182,12 @@ pharmacy-management-system/
    ssh -i your-key.pem ubuntu@your-ec2-ip
    ```
 
-2. **Install LAMP Stack**
+2. **Install Apache and PHP**
    
    **For Ubuntu:**
    ```bash
    sudo apt update
-   sudo apt install -y apache2 mysql-server php libapache2-mod-php php-mysql
+   sudo apt install -y apache2 php libapache2-mod-php
    sudo a2enmod rewrite
    sudo systemctl restart apache2
    ```
@@ -212,12 +195,10 @@ pharmacy-management-system/
    **For Amazon Linux:**
    ```bash
    sudo yum update -y
-   sudo amazon-linux-extras install -y php7.4 lamp-mariadb10.2-php7.4
-   sudo yum install -y httpd mariadb-server
+   sudo amazon-linux-extras install -y php7.4
+   sudo yum install -y httpd
    sudo systemctl start httpd
    sudo systemctl enable httpd
-   sudo systemctl start mariadb
-   sudo systemctl enable mariadb
    ```
 
 3. **Deploy Application Files**
@@ -253,81 +234,30 @@ pharmacy-management-system/
    sudo systemctl restart apache2
    ```
 
-5. **Set Up Database**
-   ```bash
-   sudo mysql -u root -p
-   ```
-   
-   Then run:
-   ```sql
-   source /var/www/html/database/schema.sql
-   ```
-
-6. **Configure Environment Variables**
-   
-   Create a `.env` file or set in Apache configuration:
-   ```bash
-   export DB_HOST="localhost"
-   export DB_NAME="pharmacy_db"
-   export DB_USER="pharmacy_user"
-   export DB_PASSWORD="secure_password"
-   ```
-
-7. **Update Frontend Configuration**
+5. **Update Frontend Configuration**
    
    Edit `frontend/js/config.js`:
    ```javascript
    const API_BASE_URL = 'http://YOUR_EC2_PUBLIC_IP/backend';
    ```
 
-8. **Set Permissions**
+6. **Set Permissions**
    ```bash
    sudo chown -R www-data:www-data /var/www/html
    sudo chmod -R 755 /var/www/html
    ```
 
-9. **Test the Application**
+7. **Test the Application**
    
    Visit: `http://YOUR_EC2_PUBLIC_IP`
 
-## 🗄 AWS RDS Database Setup
-
-### Create RDS Instance
-
-1. **Launch RDS Instance**
-   - Database engine: MySQL 5.7 or MariaDB
-   - Instance class: db.t2.micro (for testing) or larger for production
-   - Storage: 20 GB (minimum)
-   - Enable public accessibility (or use VPC peering)
-
-2. **Configure Security Group**
-   - Add inbound rule for MySQL (port 3306)
-   - Source: Your EC2 instance security group
-
-3. **Get Connection Details**
-   - Endpoint: `your-rds-instance.region.rds.amazonaws.com`
-   - Port: `3306`
-   - Username: Set during creation
-   - Password: Set during creation
-
-4. **Import Database Schema**
-   ```bash
-   mysql -h your-rds-endpoint.rds.amazonaws.com \
-         -u your-username \
-         -p \
-         pharmacy_db < database/schema.sql
-   ```
-
-5. **Update Backend Configuration**
-   
-   Set environment variables on EC2:
-   ```bash
-   export DB_HOST="your-rds-endpoint.rds.amazonaws.com"
-   export DB_NAME="pharmacy_db"
-   export DB_USER="your-username"
-   export DB_PASSWORD="your-password"
-   export DB_PORT="3306"
-   ```
+### Important Notes for Production
+- **Session Storage**: PHP sessions are stored on the server's file system
+- **Data Persistence**: Data resets when the server restarts
+- **Scalability**: For production with multiple servers, consider:
+  - Redis or Memcached for shared session storage
+  - Database backend (MySQL, PostgreSQL) for permanent storage
+- **Session Configuration**: Adjust session timeout in `php.ini` if needed
 
 ## 📚 API Documentation
 
@@ -487,25 +417,21 @@ GET /reports/dashboard
 
 ### Implemented Security Measures
 
-1. **SQL Injection Prevention**
-   - All queries use prepared statements with PDO
-   - Input sanitization and validation
-
-2. **XSS Protection**
+1. **XSS Protection**
    - HTML special characters encoding
    - Content Security Policy headers
 
-3. **CORS Configuration**
+2. **CORS Configuration**
    - Configurable allowed origins
    - Proper handling of preflight requests
 
-4. **Input Validation**
+3. **Input Validation**
    - Server-side validation for all inputs
    - Type checking and range validation
 
-5. **Password Security**
-   - BCrypt password hashing
-   - Secure password storage
+4. **Session Security**
+   - PHP session management
+   - Session data isolation
 
 ### Additional Security Recommendations
 
@@ -521,10 +447,10 @@ For production deployment:
    - Add JWT or session-based authentication
    - Protect API endpoints with middleware
 
-3. **Database Security**
-   - Use strong database passwords
-   - Restrict database user privileges
-   - Enable SSL for database connections
+3. **Session Security**
+   - Use secure session cookies (httponly, secure flags)
+   - Implement session timeout
+   - Regenerate session IDs after login
 
 4. **Server Hardening**
    - Keep software updated
@@ -532,22 +458,24 @@ For production deployment:
    - Disable directory listing
    - Hide PHP version
 
-5. **Regular Backups**
-   - Set up automated database backups
-   - Store backups securely
+5. **Data Persistence**
+   - For production use, consider migrating to a database backend
+   - Implement regular session data backups if needed
+   - Use Redis or Memcached for distributed session storage
 
 ## 🐛 Troubleshooting
 
 ### Common Issues
 
-**1. Database Connection Failed**
+**1. Session Data Lost**
 ```
-Error: Database connection failed
+Error: Data disappears or resets unexpectedly
 ```
 **Solution**: 
-- Check database credentials in `backend/config/database.php`
-- Ensure MySQL service is running: `sudo systemctl status mysql`
-- Verify database exists: `SHOW DATABASES;`
+- Check PHP session configuration: `session.gc_maxlifetime` in php.ini
+- Ensure session directory is writable: `/var/lib/php/sessions`
+- Verify session cookies are enabled in browser
+- Check if server was restarted (data resets on restart)
 
 **2. 404 Not Found for API Endpoints**
 ```
@@ -609,11 +537,11 @@ Check server logs for errors:
 # Apache error log
 sudo tail -f /var/log/apache2/error.log
 
-# MySQL error log
-sudo tail -f /var/log/mysql/error.log
-
 # PHP error log
 sudo tail -f /var/log/php/error.log
+
+# Session directory (check permissions)
+ls -la /var/lib/php/sessions
 ```
 
 ## 📞 Support
