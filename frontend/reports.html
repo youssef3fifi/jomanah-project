@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports - Pharmacy System</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">
+                <h1>⚕️ PharmaCare System</h1>
+                <p>Professional Pharmacy Management</p>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Dashboard</a></li>
+                    <li><a href="inventory.html">Inventory</a></li>
+                    <li><a href="sales.html">Sales</a></li>
+                    <li><a href="customers.html">Customers</a></li>
+                    <li><a href="reports.html">Reports</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Report Type Selector -->
+        <div class="card">
+            <h2 class="card-title">Reports & Analytics</h2>
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem;">
+                <button class="btn btn-primary" onclick="showInventoryReport()">📦 Inventory Report</button>
+                <button class="btn btn-success" onclick="showSalesReport()">💰 Sales Report</button>
+                <button class="btn btn-warning" onclick="showExpiringReport()">⏰ Expiring Medicines</button>
+            </div>
+        </div>
+
+        <!-- Inventory Report -->
+        <div id="inventoryReport" class="card hidden">
+            <div class="card-header">
+                <h3 class="card-title">📦 Inventory Report</h3>
+                <button class="btn btn-sm btn-primary" onclick="loadInventoryReport()">🔄 Refresh</button>
+            </div>
+            <div id="inventoryReportContent">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+        </div>
+
+        <!-- Sales Report -->
+        <div id="salesReport" class="card hidden">
+            <div class="card-header">
+                <h3 class="card-title">💰 Sales Report</h3>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="date" id="salesDateFrom" class="form-control" style="width: auto;">
+                    <span>to</span>
+                    <input type="date" id="salesDateTo" class="form-control" style="width: auto;">
+                    <button class="btn btn-sm btn-primary" onclick="loadSalesReport()">Generate</button>
+                </div>
+            </div>
+            <div id="salesReportContent">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+        </div>
+
+        <!-- Expiring Medicines Report -->
+        <div id="expiringReport" class="card hidden">
+            <div class="card-header">
+                <h3 class="card-title">⏰ Expiring Medicines Report</h3>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <label>Show medicines expiring within:</label>
+                    <select id="expiryDays" class="form-control" style="width: auto;" onchange="loadExpiringReport()">
+                        <option value="30">30 days</option>
+                        <option value="60">60 days</option>
+                        <option value="90" selected>90 days</option>
+                        <option value="180">180 days</option>
+                    </select>
+                </div>
+            </div>
+            <div id="expiringReportContent">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/config.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        let currentReport = null;
+
+        // Show specific report
+        function showInventoryReport() {
+            hideAllReports();
+            document.getElementById('inventoryReport').classList.remove('hidden');
+            currentReport = 'inventory';
+            loadInventoryReport();
+        }
+
+        function showSalesReport() {
+            hideAllReports();
+            document.getElementById('salesReport').classList.remove('hidden');
+            currentReport = 'sales';
+            
+            // Set default dates (current month)
+            const today = new Date();
+            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+            document.getElementById('salesDateFrom').valueAsDate = firstDay;
+            document.getElementById('salesDateTo').valueAsDate = today;
+            
+            loadSalesReport();
+        }
+
+        function showExpiringReport() {
+            hideAllReports();
+            document.getElementById('expiringReport').classList.remove('hidden');
+            currentReport = 'expiring';
+            loadExpiringReport();
+        }
+
+        function hideAllReports() {
+            document.getElementById('inventoryReport').classList.add('hidden');
+            document.getElementById('salesReport').classList.add('hidden');
+            document.getElementById('expiringReport').classList.add('hidden');
+        }
+
+        // Load inventory report
+        async function loadInventoryReport() {
+            const container = document.getElementById('inventoryReportContent');
+            PharmacyUtils.showLoading(container);
+            
+            try {
+                const data = await PharmacyUtils.fetchAPI(API.reports.inventory);
+                
+                if (data.success) {
+                    const report = data.data;
+                    
+                    let html = `
+                        <!-- Summary Cards -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                            <div style="background: var(--primary-color); color: white; padding: 1.5rem; border-radius: 8px;">
+                                <h3>${report.summary.total_medicines}</h3>
+                                <p>Total Medicines</p>
+                            </div>
+                            <div style="background: var(--secondary-color); color: white; padding: 1.5rem; border-radius: 8px;">
+                                <h3>${report.summary.total_stock}</h3>
+                                <p>Total Stock</p>
+                            </div>
+                            <div style="background: var(--warning-color); color: white; padding: 1.5rem; border-radius: 8px;">
+                                <h3>${report.summary.low_stock_count}</h3>
+                                <p>Low Stock Items</p>
+                            </div>
+                            <div style="background: var(--danger-color); color: white; padding: 1.5rem; border-radius: 8px;">
+                                <h3>${report.summary.out_of_stock_count}</h3>
+                                <p>Out of Stock</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Low Stock Items -->
+                        <div style="margin-bottom: 2rem;">
+                            <h4>Low Stock Items (< 50 units)</h4>
+                            ${report.low_stock_items.length > 0 ? `
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Medicine</th>
+                                            <th>Category</th>
+                                            <th>Stock</th>
+                                            <th>Price</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                            ` : ''}
+                    `;
+                    
+                    if (report.low_stock_items.length > 0) {
+                        report.low_stock_items.forEach(item => {
+                            const badgeClass = item.stock_quantity === 0 ? 'badge-danger' : 'badge-warning';
+                            html += `
+                                <tr>
+                                    <td>${PharmacyUtils.escapeHtml(item.name)}</td>
+                                    <td>${PharmacyUtils.escapeHtml(item.category) || 'N/A'}</td>
+                                    <td><span class="badge ${badgeClass}">${item.stock_quantity}</span></td>
+                                    <td>${PharmacyUtils.formatCurrency(item.price)}</td>
+                                </tr>
+                            `;
+                        });
+                        html += '</tbody></table>';
+                    } else {
+                        html += '<p class="text-center" style="color: #999; padding: 2rem;">No low stock items</p>';
+                    }
+                    
+                    html += '</div>';
+                    
+                    // Category Breakdown
+                    html += `
+                        <div>
+                            <h4>Inventory by Category</h4>
+                            ${report.by_category.length > 0 ? `
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Category</th>
+                                            <th>Medicine Count</th>
+                                            <th>Total Stock</th>
+                                            <th>Total Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                            ` : ''}
+                    `;
+                    
+                    if (report.by_category.length > 0) {
+                        report.by_category.forEach(cat => {
+                            html += `
+                                <tr>
+                                    <td><strong>${PharmacyUtils.escapeHtml(cat.category)}</strong></td>
+                                    <td>${cat.medicine_count}</td>
+                                    <td>${cat.total_stock}</td>
+                                    <td>${PharmacyUtils.formatCurrency(cat.total_value)}</td>
+                                </tr>
+                            `;
+                        });
+                        html += '</tbody></table>';
+                    } else {
+                        html += '<p class="text-center" style="color: #999; padding: 2rem;">No categories found</p>';
+                    }
+                    
+                    html += '</div>';
+                    
+                    container.innerHTML = html;
+                }
+            } catch (error) {
+                PharmacyUtils.showError(container, error.message);
+            }
+        }
+
+        // Load sales report
+        async function loadSalesReport() {
+            const container = document.getElementById('salesReportContent');
+            PharmacyUtils.showLoading(container);
+            
+            try {
+                const dateFrom = document.getElementById('salesDateFrom').value;
+                const dateTo = document.getElementById('salesDateTo').value;
+                
+                const params = new URLSearchParams({
+                    date_from: dateFrom,
+                    date_to: dateTo
+                });
+                
+                const data = await PharmacyUtils.fetchAPI(`${API.reports.sales}?${params}`);
+                
+                if (data.success) {
+                    const report = data.data;
+                    
+                    let html = `
+                        <!-- Summary Cards -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                            <div style="background: var(--primary-color); color: white; padding: 1.5rem; border-radius: 8px;">
+                                <h3>${report.summary.total_sales}</h3>
+                                <p>Total Sales</p>
+                            </div>
+                            <div style="background: var(--secondary-color); color: white; padding: 1.5rem; border-radius: 8px;">
+                                <h3>${PharmacyUtils.formatCurrency(report.summary.total_revenue)}</h3>
+                                <p>Total Revenue</p>
+                            </div>
+                            <div style="background: var(--info-color); color: white; padding: 1.5rem; border-radius: 8px;">
+                                <h3>${PharmacyUtils.formatCurrency(report.summary.average_sale)}</h3>
+                                <p>Average Sale</p>
+                            </div>
+                            <div style="background: var(--warning-color); color: white; padding: 1.5rem; border-radius: 8px;">
+                                <h3>${report.summary.unique_customers}</h3>
+                                <p>Unique Customers</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Payment Methods -->
+                        <div style="margin-bottom: 2rem;">
+                            <h4>Sales by Payment Method</h4>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Payment Method</th>
+                                        <th>Number of Sales</th>
+                                        <th>Total Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+                    
+                    report.by_payment_method.forEach(payment => {
+                        html += `
+                            <tr>
+                                <td><span class="badge badge-info">${payment.payment_method}</span></td>
+                                <td>${payment.count}</td>
+                                <td>${PharmacyUtils.formatCurrency(payment.total)}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += `
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Top Medicines -->
+                        <div>
+                            <h4>Top Selling Medicines</h4>
+                            ${report.top_medicines.length > 0 ? `
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Medicine</th>
+                                            <th>Category</th>
+                                            <th>Quantity Sold</th>
+                                            <th>Revenue</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                            ` : ''}
+                    `;
+                    
+                    if (report.top_medicines.length > 0) {
+                        report.top_medicines.forEach(medicine => {
+                            html += `
+                                <tr>
+                                    <td><strong>${PharmacyUtils.escapeHtml(medicine.name)}</strong></td>
+                                    <td>${PharmacyUtils.escapeHtml(medicine.category) || 'N/A'}</td>
+                                    <td><span class="badge badge-success">${medicine.total_quantity_sold}</span></td>
+                                    <td>${PharmacyUtils.formatCurrency(medicine.total_revenue)}</td>
+                                </tr>
+                            `;
+                        });
+                        html += '</tbody></table>';
+                    } else {
+                        html += '<p class="text-center" style="color: #999; padding: 2rem;">No sales data</p>';
+                    }
+                    
+                    html += '</div>';
+                    
+                    container.innerHTML = html;
+                }
+            } catch (error) {
+                PharmacyUtils.showError(container, error.message);
+            }
+        }
+
+        // Load expiring medicines report
+        async function loadExpiringReport() {
+            const container = document.getElementById('expiringReportContent');
+            PharmacyUtils.showLoading(container);
+            
+            try {
+                const days = document.getElementById('expiryDays').value;
+                const data = await PharmacyUtils.fetchAPI(`${API.reports.expiring}?days=${days}`);
+                
+                if (data.success) {
+                    const report = data.data;
+                    
+                    let html = `
+                        <!-- Summary Cards -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+                            <div style="background: var(--danger-color); color: white; padding: 1.5rem; border-radius: 8px;">
+                                <h3>${report.summary.expired_count}</h3>
+                                <p>Already Expired</p>
+                            </div>
+                            <div style="background: var(--warning-color); color: white; padding: 1.5rem; border-radius: 8px;">
+                                <h3>${report.summary.expiring_soon_count}</h3>
+                                <p>Expiring Soon (0-30 days)</p>
+                            </div>
+                            <div style="background: var(--info-color); color: white; padding: 1.5rem; border-radius: 8px;">
+                                <h3>${report.summary.expiring_later_count}</h3>
+                                <p>Expiring Later (31-90 days)</p>
+                            </div>
+                            <div style="background: var(--primary-color); color: white; padding: 1.5rem; border-radius: 8px;">
+                                <h3>${report.summary.total_count}</h3>
+                                <p>Total</p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Expired medicines
+                    if (report.expired.length > 0) {
+                        html += `
+                            <div style="margin-bottom: 2rem;">
+                                <h4 style="color: var(--danger-color);">⚠️ Expired Medicines</h4>
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Medicine</th>
+                                            <th>Category</th>
+                                            <th>Stock</th>
+                                            <th>Expiry Date</th>
+                                            <th>Days Overdue</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                        `;
+                        
+                        report.expired.forEach(med => {
+                            html += `
+                                <tr style="background: #fff3f3;">
+                                    <td><strong>${PharmacyUtils.escapeHtml(med.name)}</strong></td>
+                                    <td>${PharmacyUtils.escapeHtml(med.category) || 'N/A'}</td>
+                                    <td>${med.stock_quantity}</td>
+                                    <td>${PharmacyUtils.formatDate(med.expiry_date)}</td>
+                                    <td><span class="badge badge-danger">${Math.abs(med.days_until_expiry)} days ago</span></td>
+                                </tr>
+                            `;
+                        });
+                        
+                        html += '</tbody></table></div>';
+                    }
+                    
+                    // Expiring soon
+                    if (report.expiring_soon.length > 0) {
+                        html += `
+                            <div style="margin-bottom: 2rem;">
+                                <h4 style="color: var(--warning-color);">Expiring Soon (0-30 days)</h4>
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Medicine</th>
+                                            <th>Category</th>
+                                            <th>Stock</th>
+                                            <th>Expiry Date</th>
+                                            <th>Days Remaining</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                        `;
+                        
+                        report.expiring_soon.forEach(med => {
+                            html += `
+                                <tr style="background: #fffbf0;">
+                                    <td><strong>${PharmacyUtils.escapeHtml(med.name)}</strong></td>
+                                    <td>${PharmacyUtils.escapeHtml(med.category) || 'N/A'}</td>
+                                    <td>${med.stock_quantity}</td>
+                                    <td>${PharmacyUtils.formatDate(med.expiry_date)}</td>
+                                    <td><span class="badge badge-warning">${med.days_until_expiry} days</span></td>
+                                </tr>
+                            `;
+                        });
+                        
+                        html += '</tbody></table></div>';
+                    }
+                    
+                    // Expiring later
+                    if (report.expiring_later.length > 0) {
+                        html += `
+                            <div>
+                                <h4>Expiring Later (31-${days} days)</h4>
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Medicine</th>
+                                            <th>Category</th>
+                                            <th>Stock</th>
+                                            <th>Expiry Date</th>
+                                            <th>Days Remaining</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                        `;
+                        
+                        report.expiring_later.forEach(med => {
+                            html += `
+                                <tr>
+                                    <td><strong>${PharmacyUtils.escapeHtml(med.name)}</strong></td>
+                                    <td>${PharmacyUtils.escapeHtml(med.category) || 'N/A'}</td>
+                                    <td>${med.stock_quantity}</td>
+                                    <td>${PharmacyUtils.formatDate(med.expiry_date)}</td>
+                                    <td><span class="badge badge-info">${med.days_until_expiry} days</span></td>
+                                </tr>
+                            `;
+                        });
+                        
+                        html += '</tbody></table></div>';
+                    }
+                    
+                    if (report.summary.total_count === 0) {
+                        html += '<p class="text-center" style="color: #999; padding: 2rem;">No expiring medicines found</p>';
+                    }
+                    
+                    container.innerHTML = html;
+                }
+            } catch (error) {
+                PharmacyUtils.showError(container, error.message);
+            }
+        }
+
+        // Initialize - show inventory report by default
+        document.addEventListener('DOMContentLoaded', () => {
+            showInventoryReport();
+        });
+    </script>
+</body>
+</html>

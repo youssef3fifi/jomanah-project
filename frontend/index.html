@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Pharmacy Management System - Dashboard">
+    <title>Dashboard - Pharmacy Management System</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">
+                <h1>⚕️ PharmaCare System</h1>
+                <p>Professional Pharmacy Management</p>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Dashboard</a></li>
+                    <li><a href="inventory.html">Inventory</a></li>
+                    <li><a href="sales.html">Sales</a></li>
+                    <li><a href="customers.html">Customers</a></li>
+                    <li><a href="reports.html">Reports</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Dashboard Overview</h2>
+                <button class="btn btn-primary" onclick="loadDashboard()">🔄 Refresh</button>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-card">
+                    <div class="stat-icon primary">💰</div>
+                    <div class="stat-info">
+                        <h3 id="todayRevenue">$0.00</h3>
+                        <p>Today's Revenue</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon success">📦</div>
+                    <div class="stat-info">
+                        <h3 id="totalMedicines">0</h3>
+                        <p>Total Medicines</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon warning">⚠️</div>
+                    <div class="stat-info">
+                        <h3 id="lowStock">0</h3>
+                        <p>Low Stock Items</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon danger">⏰</div>
+                    <div class="stat-info">
+                        <h3 id="expiringSoon">0</h3>
+                        <p>Expiring Soon</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="card">
+            <h3>Monthly Overview</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                <div style="padding: 1rem; background: #f5f5f5; border-radius: 5px;">
+                    <p style="color: #666; margin-bottom: 0.5rem;">This Month's Sales</p>
+                    <h3 id="monthSales" style="color: var(--primary-dark);">0</h3>
+                </div>
+                <div style="padding: 1rem; background: #f5f5f5; border-radius: 5px;">
+                    <p style="color: #666; margin-bottom: 0.5rem;">Monthly Revenue</p>
+                    <h3 id="monthRevenue" style="color: var(--primary-dark);">$0.00</h3>
+                </div>
+                <div style="padding: 1rem; background: #f5f5f5; border-radius: 5px;">
+                    <p style="color: #666; margin-bottom: 0.5rem;">Total Customers</p>
+                    <h3 id="totalCustomers" style="color: var(--primary-dark);">0</h3>
+                </div>
+                <div style="padding: 1rem; background: #f5f5f5; border-radius: 5px;">
+                    <p style="color: #666; margin-bottom: 0.5rem;">Total Stock</p>
+                    <h3 id="totalStock" style="color: var(--primary-dark);">0</h3>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Sales -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Recent Sales</h3>
+                <a href="sales.html" class="btn btn-sm btn-primary">View All Sales →</a>
+            </div>
+            <div class="table-container" id="recentSalesContainer">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card">
+            <h3 class="card-title">Quick Actions</h3>
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem;">
+                <a href="sales.html" class="btn btn-primary">🛒 New Sale</a>
+                <a href="inventory.html" class="btn btn-success">➕ Add Medicine</a>
+                <a href="customers.html" class="btn btn-secondary">👤 Add Customer</a>
+                <a href="reports.html" class="btn btn-info">📊 View Reports</a>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/config.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        // Load dashboard data
+        async function loadDashboard() {
+            try {
+                const data = await PharmacyUtils.fetchAPI(API.reports.dashboard);
+                
+                if (data.success) {
+                    const stats = data.data;
+                    
+                    // Update statistics
+                    document.getElementById('todayRevenue').textContent = 
+                        PharmacyUtils.formatCurrency(stats.today.revenue);
+                    document.getElementById('totalMedicines').textContent = 
+                        stats.inventory.total_medicines;
+                    document.getElementById('lowStock').textContent = 
+                        stats.inventory.low_stock_count;
+                    document.getElementById('expiringSoon').textContent = 
+                        stats.inventory.expiring_soon_count;
+                    
+                    // Monthly stats
+                    document.getElementById('monthSales').textContent = 
+                        stats.this_month.sales_count;
+                    document.getElementById('monthRevenue').textContent = 
+                        PharmacyUtils.formatCurrency(stats.this_month.revenue);
+                    document.getElementById('totalCustomers').textContent = 
+                        stats.total_customers;
+                    document.getElementById('totalStock').textContent = 
+                        stats.inventory.total_stock;
+                    
+                    // Recent sales
+                    displayRecentSales(stats.recent_sales);
+                }
+            } catch (error) {
+                PharmacyUtils.showNotification('Failed to load dashboard data: ' + error.message, 'error');
+                console.error('Dashboard Error:', error);
+            }
+        }
+        
+        function displayRecentSales(sales) {
+            const container = document.getElementById('recentSalesContainer');
+            
+            if (!sales || sales.length === 0) {
+                PharmacyUtils.showEmpty(container, 'No recent sales');
+                return;
+            }
+            
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Customer</th>
+                            <th>Amount</th>
+                            <th>Payment Method</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            sales.forEach(sale => {
+                html += `
+                    <tr>
+                        <td>#${sale.id}</td>
+                        <td>${sale.customer_name || 'Walk-in Customer'}</td>
+                        <td>${PharmacyUtils.formatCurrency(sale.total_amount)}</td>
+                        <td><span class="badge badge-info">${sale.payment_method}</span></td>
+                        <td>${PharmacyUtils.formatDateTime(sale.sale_date)}</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+        
+        // Load dashboard on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDashboard();
+        });
+    </script>
+</body>
+</html>
