@@ -137,9 +137,9 @@ pharmacy-management-system/
    
    Using PHP built-in server (for testing):
    ```bash
-   # Backend
+   # Backend (with router for URL rewriting)
    cd backend
-   php -S localhost:8000
+   php -S localhost:8000 router.php
    
    # Frontend (in another terminal)
    cd frontend
@@ -150,6 +150,8 @@ pharmacy-management-system/
    ```javascript
    const API_BASE_URL = 'http://localhost:8000';
    ```
+   
+   **Note**: The `router.php` file emulates Apache's `.htaccess` URL rewriting for the PHP built-in server. For production deployment with Apache, this file is not needed as Apache handles routing via `.htaccess`.
 
 5. **Access the Application**
    
