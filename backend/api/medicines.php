@@ -5,13 +5,10 @@
  */
 
 require_once '../config/cors.php';
-require_once '../config/database.php';
+require_once '../config/storage.php';
 require_once '../includes/functions.php';
 
 try {
-    $database = new Database();
-    $db = $database->getConnection();
-    
     $method = getRequestMethod();
     $requestUri = $_SERVER['REQUEST_URI'];
     
@@ -23,22 +20,22 @@ try {
         case 'GET':
             if ($id) {
                 // Get single medicine
-                getMedicine($db, $id);
+                getMedicine($id);
             } else {
                 // Get all medicines with optional filters
-                getMedicines($db);
+                getMedicines();
             }
             break;
             
         case 'POST':
             // Create new medicine
-            createMedicine($db);
+            createMedicine();
             break;
             
         case 'PUT':
             // Update medicine
             if ($id) {
-                updateMedicine($db, $id);
+                updateMedicine($id);
             } else {
                 sendError(400, "Medicine ID is required");
             }
@@ -47,7 +44,7 @@ try {
         case 'DELETE':
             // Delete medicine
             if ($id) {
-                deleteMedicine($db, $id);
+                deleteMedicine($id);
             } else {
                 sendError(400, "Medicine ID is required");
             }
@@ -64,49 +61,43 @@ try {
 /**
  * Get all medicines
  */
-function getMedicines($db) {
+function getMedicines() {
     $pagination = getPaginationParams();
+    $medicines = $_SESSION['medicines'];
     
-    // Build query with filters
-    $where = [];
-    $params = [];
-    
+    // Apply filters
     if (isset($_GET['search']) && !empty($_GET['search'])) {
-        $where[] = "(name LIKE :search OR category LIKE :search OR supplier LIKE :search)";
-        $params[':search'] = '%' . $_GET['search'] . '%';
+        $search = strtolower($_GET['search']);
+        $medicines = array_filter($medicines, function($medicine) use ($search) {
+            return stripos($medicine['name'], $search) !== false ||
+                   stripos($medicine['category'], $search) !== false ||
+                   stripos($medicine['supplier'], $search) !== false;
+        });
     }
     
     if (isset($_GET['category']) && !empty($_GET['category'])) {
-        $where[] = "category = :category";
-        $params[':category'] = $_GET['category'];
+        $category = $_GET['category'];
+        $medicines = array_filter($medicines, function($medicine) use ($category) {
+            return $medicine['category'] === $category;
+        });
     }
     
     if (isset($_GET['low_stock']) && $_GET['low_stock'] == 'true') {
-        $where[] = "stock_quantity < 50";
+        $medicines = array_filter($medicines, function($medicine) {
+            return $medicine['stock_quantity'] < 50;
+        });
     }
     
-    $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+    // Sort by name
+    usort($medicines, function($a, $b) {
+        return strcmp($a['name'], $b['name']);
+    });
     
     // Count total
-    $countQuery = "SELECT COUNT(*) as total FROM medicines $whereClause";
-    $countStmt = $db->prepare($countQuery);
-    foreach ($params as $key => $value) {
-        $countStmt->bindValue($key, $value);
-    }
-    $countStmt->execute();
-    $total = $countStmt->fetch()['total'];
+    $total = count($medicines);
     
-    // Get data with pagination
-    $query = "SELECT * FROM medicines $whereClause ORDER BY name ASC LIMIT :limit OFFSET :offset";
-    $stmt = $db->prepare($query);
-    foreach ($params as $key => $value) {
-        $stmt->bindValue($key, $value);
-    }
-    $stmt->bindValue(':limit', $pagination['limit'], PDO::PARAM_INT);
-    $stmt->bindValue(':offset', $pagination['offset'], PDO::PARAM_INT);
-    $stmt->execute();
-    
-    $medicines = $stmt->fetchAll();
+    // Apply pagination
+    $medicines = array_slice($medicines, $pagination['offset'], $pagination['limit']);
     
     $response = buildPaginationResponse($medicines, $total, $pagination['page'], $pagination['limit']);
     sendSuccess("Medicines retrieved successfully", $response);
@@ -115,16 +106,11 @@ function getMedicines($db) {
 /**
  * Get single medicine
  */
-function getMedicine($db, $id) {
-    $query = "SELECT * FROM medicines WHERE id = :id";
-    $stmt = $db->prepare($query);
-    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-    $stmt->execute();
+function getMedicine($id) {
+    $key = findById($_SESSION['medicines'], $id);
     
-    $medicine = $stmt->fetch();
-    
-    if ($medicine) {
-        sendSuccess("Medicine retrieved successfully", $medicine);
+    if ($key !== false) {
+        sendSuccess("Medicine retrieved successfully", $_SESSION['medicines'][$key]);
     } else {
         sendError(404, "Medicine not found");
     }
@@ -133,7 +119,7 @@ function getMedicine($db, $id) {
 /**
  * Create new medicine
  */
-function createMedicine($db) {
+function createMedicine() {
     $data = getJsonInput();
     
     // Validate required fields
@@ -157,40 +143,33 @@ function createMedicine($db) {
         sendError(400, "Expiry date must be in YYYY-MM-DD format");
     }
     
-    // Insert medicine
-    $query = "INSERT INTO medicines (name, category, price, stock_quantity, expiry_date, supplier, description) 
-              VALUES (:name, :category, :price, :stock_quantity, :expiry_date, :supplier, :description)";
+    // Create new medicine
+    $newMedicine = [
+        'id' => getNextId('medicine'),
+        'name' => $data['name'],
+        'category' => $data['category'] ?? null,
+        'price' => floatval($data['price']),
+        'stock_quantity' => intval($data['stock_quantity']),
+        'expiry_date' => $data['expiry_date'] ?? null,
+        'supplier' => $data['supplier'] ?? null,
+        'description' => $data['description'] ?? null,
+        'created_at' => date('Y-m-d H:i:s'),
+        'updated_at' => date('Y-m-d H:i:s')
+    ];
     
-    $stmt = $db->prepare($query);
-    $stmt->bindParam(':name', $data['name']);
-    $stmt->bindParam(':category', $data['category']);
-    $stmt->bindParam(':price', $data['price']);
-    $stmt->bindParam(':stock_quantity', $data['stock_quantity']);
-    $stmt->bindParam(':expiry_date', $data['expiry_date']);
-    $stmt->bindParam(':supplier', $data['supplier']);
-    $stmt->bindParam(':description', $data['description']);
-    
-    if ($stmt->execute()) {
-        $data['id'] = $db->lastInsertId();
-        sendSuccess("Medicine created successfully", $data);
-    } else {
-        sendError(500, "Failed to create medicine");
-    }
+    $_SESSION['medicines'][] = $newMedicine;
+    sendSuccess("Medicine created successfully", $newMedicine);
 }
 
 /**
  * Update medicine
  */
-function updateMedicine($db, $id) {
+function updateMedicine($id) {
     $data = getJsonInput();
     
     // Check if medicine exists
-    $checkQuery = "SELECT id FROM medicines WHERE id = :id";
-    $checkStmt = $db->prepare($checkQuery);
-    $checkStmt->bindParam(':id', $id, PDO::PARAM_INT);
-    $checkStmt->execute();
-    
-    if (!$checkStmt->fetch()) {
+    $key = findById($_SESSION['medicines'], $id);
+    if ($key === false) {
         sendError(404, "Medicine not found");
     }
     
@@ -207,69 +186,51 @@ function updateMedicine($db, $id) {
         sendError(400, "Expiry date must be in YYYY-MM-DD format");
     }
     
-    // Build update query
-    $fields = [];
-    $params = [':id' => $id];
-    
+    // Update allowed fields
     $allowedFields = ['name', 'category', 'price', 'stock_quantity', 'expiry_date', 'supplier', 'description'];
+    $updated = false;
+    
     foreach ($allowedFields as $field) {
         if (isset($data[$field])) {
-            $fields[] = "$field = :$field";
-            $params[":$field"] = $data[$field];
+            if ($field === 'price') {
+                $_SESSION['medicines'][$key][$field] = floatval($data[$field]);
+            } elseif ($field === 'stock_quantity') {
+                $_SESSION['medicines'][$key][$field] = intval($data[$field]);
+            } else {
+                $_SESSION['medicines'][$key][$field] = $data[$field];
+            }
+            $updated = true;
         }
     }
     
-    if (empty($fields)) {
+    if (!$updated) {
         sendError(400, "No fields to update");
     }
     
-    $query = "UPDATE medicines SET " . implode(', ', $fields) . " WHERE id = :id";
-    $stmt = $db->prepare($query);
-    
-    foreach ($params as $key => $value) {
-        $stmt->bindValue($key, $value);
-    }
-    
-    if ($stmt->execute()) {
-        sendSuccess("Medicine updated successfully", ['id' => $id]);
-    } else {
-        sendError(500, "Failed to update medicine");
-    }
+    $_SESSION['medicines'][$key]['updated_at'] = date('Y-m-d H:i:s');
+    sendSuccess("Medicine updated successfully", ['id' => $id]);
 }
 
 /**
  * Delete medicine
  */
-function deleteMedicine($db, $id) {
+function deleteMedicine($id) {
     // Check if medicine exists
-    $checkQuery = "SELECT id FROM medicines WHERE id = :id";
-    $checkStmt = $db->prepare($checkQuery);
-    $checkStmt->bindParam(':id', $id, PDO::PARAM_INT);
-    $checkStmt->execute();
-    
-    if (!$checkStmt->fetch()) {
+    $key = findById($_SESSION['medicines'], $id);
+    if ($key === false) {
         sendError(404, "Medicine not found");
     }
     
     // Check if medicine is used in any sales
-    $salesQuery = "SELECT COUNT(*) as count FROM sale_items WHERE medicine_id = :id";
-    $salesStmt = $db->prepare($salesQuery);
-    $salesStmt->bindParam(':id', $id, PDO::PARAM_INT);
-    $salesStmt->execute();
-    $salesCount = $salesStmt->fetch()['count'];
-    
-    if ($salesCount > 0) {
-        sendError(400, "Cannot delete medicine that has sales records");
+    foreach ($_SESSION['sales'] as $sale) {
+        foreach ($sale['items'] as $item) {
+            if ($item['medicine_id'] == $id) {
+                sendError(400, "Cannot delete medicine that has sales records");
+            }
+        }
     }
     
     // Delete medicine
-    $query = "DELETE FROM medicines WHERE id = :id";
-    $stmt = $db->prepare($query);
-    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-    
-    if ($stmt->execute()) {
-        sendSuccess("Medicine deleted successfully");
-    } else {
-        sendError(500, "Failed to delete medicine");
-    }
+    array_splice($_SESSION['medicines'], $key, 1);
+    sendSuccess("Medicine deleted successfully");
 }
