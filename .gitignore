@@ -1,0 +1,47 @@
+# Environment files
+.env
+.env.local
+.env.production
+
+# Database credentials
+config.local.php
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+error_log
+access_log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+
+# Node modules (if using any build tools)
+node_modules/
+
+# Vendor directory (if using Composer)
+vendor/
+
+# Build artifacts
+dist/
+build/
+
+# PHP session files
+sessions/
+
+# Cache files
+cache/
+*.cache

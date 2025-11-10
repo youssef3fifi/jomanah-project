@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customers Management - Pharmacy System</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">
+                <h1>⚕️ PharmaCare System</h1>
+                <p>Professional Pharmacy Management</p>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Dashboard</a></li>
+                    <li><a href="inventory.html">Inventory</a></li>
+                    <li><a href="sales.html">Sales</a></li>
+                    <li><a href="customers.html">Customers</a></li>
+                    <li><a href="reports.html">Reports</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Customers Management</h2>
+                <button class="btn btn-primary" onclick="openAddModal()">👤 Add Customer</button>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="toolbar">
+                <div class="search-box">
+                    <input type="text" id="searchInput" class="form-control" 
+                           placeholder="Search by name, phone, or email...">
+                </div>
+            </div>
+
+            <!-- Customers Table -->
+            <div class="table-container" id="customersContainer">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+
+            <!-- Pagination -->
+            <div id="paginationContainer"></div>
+        </div>
+    </main>
+
+    <!-- Add/Edit Customer Modal -->
+    <div id="customerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">Add Customer</h3>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="customerForm" onsubmit="handleSubmit(event)">
+                <input type="hidden" id="customerId">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="name">Full Name *</label>
+                        <input type="text" id="name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">Phone Number *</label>
+                        <input type="tel" id="phone" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label for="address">Address</label>
+                    <textarea id="address" class="form-control" rows="3"></textarea>
+                </div>
+
+                <div class="flex-between" style="margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="submitBtn">Save Customer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Customer Details Modal -->
+    <div id="customerDetailsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Customer Details</h3>
+                <button class="close-btn" onclick="closeDetailsModal()">&times;</button>
+            </div>
+            <div id="customerDetailsContent">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/customers.js"></script>
+</body>
+</html>
