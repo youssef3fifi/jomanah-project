@@ -197,6 +197,14 @@ function isValidEmail(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+// HTML escape to prevent XSS
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 // Create pagination
 function createPagination(container, currentPage, totalPages, onPageChange) {
     const pagination = document.createElement('div');
@@ -247,5 +255,6 @@ window.PharmacyUtils = {
     debounce,
     validateForm,
     isValidEmail,
+    escapeHtml,
     createPagination
 };

@@ -177,8 +177,8 @@
                             const badgeClass = item.stock_quantity === 0 ? 'badge-danger' : 'badge-warning';
                             html += `
                                 <tr>
-                                    <td>${item.name}</td>
-                                    <td>${item.category || 'N/A'}</td>
+                                    <td>${PharmacyUtils.escapeHtml(item.name)}</td>
+                                    <td>${PharmacyUtils.escapeHtml(item.category) || 'N/A'}</td>
                                     <td><span class="badge ${badgeClass}">${item.stock_quantity}</span></td>
                                     <td>${PharmacyUtils.formatCurrency(item.price)}</td>
                                 </tr>
@@ -213,7 +213,7 @@
                         report.by_category.forEach(cat => {
                             html += `
                                 <tr>
-                                    <td><strong>${cat.category}</strong></td>
+                                    <td><strong>${PharmacyUtils.escapeHtml(cat.category)}</strong></td>
                                     <td>${cat.medicine_count}</td>
                                     <td>${cat.total_stock}</td>
                                     <td>${PharmacyUtils.formatCurrency(cat.total_value)}</td>
@@ -324,8 +324,8 @@
                         report.top_medicines.forEach(medicine => {
                             html += `
                                 <tr>
-                                    <td><strong>${medicine.name}</strong></td>
-                                    <td>${medicine.category || 'N/A'}</td>
+                                    <td><strong>${PharmacyUtils.escapeHtml(medicine.name)}</strong></td>
+                                    <td>${PharmacyUtils.escapeHtml(medicine.category) || 'N/A'}</td>
                                     <td><span class="badge badge-success">${medicine.total_quantity_sold}</span></td>
                                     <td>${PharmacyUtils.formatCurrency(medicine.total_revenue)}</td>
                                 </tr>
@@ -400,8 +400,8 @@
                         report.expired.forEach(med => {
                             html += `
                                 <tr style="background: #fff3f3;">
-                                    <td><strong>${med.name}</strong></td>
-                                    <td>${med.category || 'N/A'}</td>
+                                    <td><strong>${PharmacyUtils.escapeHtml(med.name)}</strong></td>
+                                    <td>${PharmacyUtils.escapeHtml(med.category) || 'N/A'}</td>
                                     <td>${med.stock_quantity}</td>
                                     <td>${PharmacyUtils.formatDate(med.expiry_date)}</td>
                                     <td><span class="badge badge-danger">${Math.abs(med.days_until_expiry)} days ago</span></td>
@@ -433,8 +433,8 @@
                         report.expiring_soon.forEach(med => {
                             html += `
                                 <tr style="background: #fffbf0;">
-                                    <td><strong>${med.name}</strong></td>
-                                    <td>${med.category || 'N/A'}</td>
+                                    <td><strong>${PharmacyUtils.escapeHtml(med.name)}</strong></td>
+                                    <td>${PharmacyUtils.escapeHtml(med.category) || 'N/A'}</td>
                                     <td>${med.stock_quantity}</td>
                                     <td>${PharmacyUtils.formatDate(med.expiry_date)}</td>
                                     <td><span class="badge badge-warning">${med.days_until_expiry} days</span></td>
@@ -466,8 +466,8 @@
                         report.expiring_later.forEach(med => {
                             html += `
                                 <tr>
-                                    <td><strong>${med.name}</strong></td>
-                                    <td>${med.category || 'N/A'}</td>
+                                    <td><strong>${PharmacyUtils.escapeHtml(med.name)}</strong></td>
+                                    <td>${PharmacyUtils.escapeHtml(med.category) || 'N/A'}</td>
                                     <td>${med.stock_quantity}</td>
                                     <td>${PharmacyUtils.formatDate(med.expiry_date)}</td>
                                     <td><span class="badge badge-info">${med.days_until_expiry} days</span></td>
