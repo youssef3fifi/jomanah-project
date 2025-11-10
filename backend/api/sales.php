@@ -5,13 +5,10 @@
  */
 
 require_once '../config/cors.php';
-require_once '../config/database.php';
+require_once '../config/storage.php';
 require_once '../includes/functions.php';
 
 try {
-    $database = new Database();
-    $db = $database->getConnection();
-    
     $method = getRequestMethod();
     $requestUri = $_SERVER['REQUEST_URI'];
     
@@ -23,16 +20,16 @@ try {
         case 'GET':
             if ($id) {
                 // Get single sale with details
-                getSale($db, $id);
+                getSale($id);
             } else {
                 // Get all sales with filters
-                getSales($db);
+                getSales();
             }
             break;
             
         case 'POST':
             // Create new sale
-            createSale($db);
+            createSale();
             break;
             
         default:
@@ -46,61 +43,59 @@ try {
 /**
  * Get all sales
  */
-function getSales($db) {
+function getSales() {
     $pagination = getPaginationParams();
+    $sales = $_SESSION['sales'];
     
-    // Build query with filters
-    $where = [];
-    $params = [];
-    
+    // Apply filters
     if (isset($_GET['customer_id']) && !empty($_GET['customer_id'])) {
-        $where[] = "s.customer_id = :customer_id";
-        $params[':customer_id'] = $_GET['customer_id'];
+        $customerId = intval($_GET['customer_id']);
+        $sales = array_filter($sales, function($sale) use ($customerId) {
+            return isset($sale['customer_id']) && $sale['customer_id'] == $customerId;
+        });
     }
     
     if (isset($_GET['payment_method']) && !empty($_GET['payment_method'])) {
-        $where[] = "s.payment_method = :payment_method";
-        $params[':payment_method'] = $_GET['payment_method'];
+        $paymentMethod = $_GET['payment_method'];
+        $sales = array_filter($sales, function($sale) use ($paymentMethod) {
+            return strcasecmp($sale['payment_method'], $paymentMethod) === 0;
+        });
     }
     
     if (isset($_GET['date_from']) && !empty($_GET['date_from'])) {
-        $where[] = "DATE(s.sale_date) >= :date_from";
-        $params[':date_from'] = $_GET['date_from'];
+        $dateFrom = $_GET['date_from'];
+        $sales = array_filter($sales, function($sale) use ($dateFrom) {
+            return substr($sale['sale_date'], 0, 10) >= $dateFrom;
+        });
     }
     
     if (isset($_GET['date_to']) && !empty($_GET['date_to'])) {
-        $where[] = "DATE(s.sale_date) <= :date_to";
-        $params[':date_to'] = $_GET['date_to'];
+        $dateTo = $_GET['date_to'];
+        $sales = array_filter($sales, function($sale) use ($dateTo) {
+            return substr($sale['sale_date'], 0, 10) <= $dateTo;
+        });
     }
     
-    $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+    // Add customer info
+    foreach ($sales as &$sale) {
+        if (isset($sale['customer_id'])) {
+            $customerKey = findById($_SESSION['customers'], $sale['customer_id']);
+            if ($customerKey !== false) {
+                $sale['customer_phone'] = $_SESSION['customers'][$customerKey]['phone'];
+            }
+        }
+    }
+    
+    // Sort by sale_date descending
+    usort($sales, function($a, $b) {
+        return strcmp($b['sale_date'], $a['sale_date']);
+    });
     
     // Count total
-    $countQuery = "SELECT COUNT(*) as total FROM sales s $whereClause";
-    $countStmt = $db->prepare($countQuery);
-    foreach ($params as $key => $value) {
-        $countStmt->bindValue($key, $value);
-    }
-    $countStmt->execute();
-    $total = $countStmt->fetch()['total'];
+    $total = count($sales);
     
-    // Get data with pagination
-    $query = "SELECT s.*, c.name as customer_name, c.phone as customer_phone
-              FROM sales s
-              LEFT JOIN customers c ON s.customer_id = c.id
-              $whereClause
-              ORDER BY s.sale_date DESC
-              LIMIT :limit OFFSET :offset";
-    
-    $stmt = $db->prepare($query);
-    foreach ($params as $key => $value) {
-        $stmt->bindValue($key, $value);
-    }
-    $stmt->bindValue(':limit', $pagination['limit'], PDO::PARAM_INT);
-    $stmt->bindValue(':offset', $pagination['offset'], PDO::PARAM_INT);
-    $stmt->execute();
-    
-    $sales = $stmt->fetchAll();
+    // Apply pagination
+    $sales = array_slice($sales, $pagination['offset'], $pagination['limit']);
     
     $response = buildPaginationResponse($sales, $total, $pagination['page'], $pagination['limit']);
     sendSuccess("Sales retrieved successfully", $response);
@@ -109,34 +104,34 @@ function getSales($db) {
 /**
  * Get single sale with items
  */
-function getSale($db, $id) {
-    // Get sale details
-    $query = "SELECT s.*, c.name as customer_name, c.phone as customer_phone, c.email as customer_email
-              FROM sales s
-              LEFT JOIN customers c ON s.customer_id = c.id
-              WHERE s.id = :id";
+function getSale($id) {
+    $key = findById($_SESSION['sales'], $id);
     
-    $stmt = $db->prepare($query);
-    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-    $stmt->execute();
-    
-    $sale = $stmt->fetch();
-    
-    if (!$sale) {
+    if ($key === false) {
         sendError(404, "Sale not found");
     }
     
-    // Get sale items
-    $itemsQuery = "SELECT si.*, m.name as medicine_name, m.category
-                   FROM sale_items si
-                   JOIN medicines m ON si.medicine_id = m.id
-                   WHERE si.sale_id = :id";
+    $sale = $_SESSION['sales'][$key];
     
-    $itemsStmt = $db->prepare($itemsQuery);
-    $itemsStmt->bindParam(':id', $id, PDO::PARAM_INT);
-    $itemsStmt->execute();
+    // Add customer details if customer_id is set
+    if (isset($sale['customer_id'])) {
+        $customerKey = findById($_SESSION['customers'], $sale['customer_id']);
+        if ($customerKey !== false) {
+            $customer = $_SESSION['customers'][$customerKey];
+            $sale['customer_phone'] = $customer['phone'];
+            $sale['customer_email'] = $customer['email'] ?? null;
+        }
+    }
     
-    $sale['items'] = $itemsStmt->fetchAll();
+    // Add medicine details to items
+    if (isset($sale['items'])) {
+        foreach ($sale['items'] as &$item) {
+            $medicineKey = findById($_SESSION['medicines'], $item['medicine_id']);
+            if ($medicineKey !== false) {
+                $item['category'] = $_SESSION['medicines'][$medicineKey]['category'];
+            }
+        }
+    }
     
     sendSuccess("Sale retrieved successfully", $sale);
 }
@@ -144,7 +139,7 @@ function getSale($db, $id) {
 /**
  * Create new sale
  */
-function createSale($db) {
+function createSale() {
     $data = getJsonInput();
     
     // Validate required fields
@@ -156,12 +151,10 @@ function createSale($db) {
         sendError(400, "Payment method is required");
     }
     
-    if (!in_array($data['payment_method'], ['cash', 'card', 'insurance'])) {
+    $paymentMethod = strtolower($data['payment_method']);
+    if (!in_array($paymentMethod, ['cash', 'card', 'insurance', 'credit card'])) {
         sendError(400, "Invalid payment method");
     }
-    
-    // Start transaction
-    $db->beginTransaction();
     
     try {
         $totalAmount = 0;
@@ -178,15 +171,13 @@ function createSale($db) {
             }
             
             // Get medicine details and check stock
-            $medicineQuery = "SELECT id, name, price, stock_quantity FROM medicines WHERE id = :id";
-            $medicineStmt = $db->prepare($medicineQuery);
-            $medicineStmt->bindParam(':id', $item['medicine_id'], PDO::PARAM_INT);
-            $medicineStmt->execute();
-            $medicine = $medicineStmt->fetch();
+            $medicineKey = findById($_SESSION['medicines'], $item['medicine_id']);
             
-            if (!$medicine) {
+            if ($medicineKey === false) {
                 throw new Exception("Medicine with ID {$item['medicine_id']} not found");
             }
+            
+            $medicine = $_SESSION['medicines'][$medicineKey];
             
             if ($medicine['stock_quantity'] < $item['quantity']) {
                 throw new Exception("Insufficient stock for {$medicine['name']}. Available: {$medicine['stock_quantity']}");
@@ -197,63 +188,55 @@ function createSale($db) {
             
             $saleItems[] = [
                 'medicine_id' => $item['medicine_id'],
-                'quantity' => $item['quantity'],
-                'unit_price' => $medicine['price'],
-                'subtotal' => $subtotal
+                'medicine_name' => $medicine['name'],
+                'quantity' => intval($item['quantity']),
+                'unit_price' => floatval($medicine['price']),
+                'subtotal' => floatval($subtotal)
             ];
         }
         
-        // Insert sale
-        $saleQuery = "INSERT INTO sales (customer_id, total_amount, payment_method) 
-                      VALUES (:customer_id, :total_amount, :payment_method)";
+        // Get customer name if customer_id is provided
+        $customerName = null;
+        $customerId = isset($data['customer_id']) && !empty($data['customer_id']) ? intval($data['customer_id']) : null;
         
-        $saleStmt = $db->prepare($saleQuery);
-        $customerId = isset($data['customer_id']) && !empty($data['customer_id']) ? $data['customer_id'] : null;
-        $saleStmt->bindParam(':customer_id', $customerId, PDO::PARAM_INT);
-        $saleStmt->bindParam(':total_amount', $totalAmount);
-        $saleStmt->bindParam(':payment_method', $data['payment_method']);
-        $saleStmt->execute();
-        
-        $saleId = $db->lastInsertId();
-        
-        // Insert sale items and update stock
-        foreach ($saleItems as $item) {
-            // Insert sale item
-            $itemQuery = "INSERT INTO sale_items (sale_id, medicine_id, quantity, unit_price, subtotal)
-                         VALUES (:sale_id, :medicine_id, :quantity, :unit_price, :subtotal)";
-            
-            $itemStmt = $db->prepare($itemQuery);
-            $itemStmt->bindParam(':sale_id', $saleId, PDO::PARAM_INT);
-            $itemStmt->bindParam(':medicine_id', $item['medicine_id'], PDO::PARAM_INT);
-            $itemStmt->bindParam(':quantity', $item['quantity']);
-            $itemStmt->bindParam(':unit_price', $item['unit_price']);
-            $itemStmt->bindParam(':subtotal', $item['subtotal']);
-            $itemStmt->execute();
-            
-            // Update stock
-            $updateStockQuery = "UPDATE medicines SET stock_quantity = stock_quantity - :quantity 
-                                WHERE id = :medicine_id";
-            $updateStockStmt = $db->prepare($updateStockQuery);
-            $updateStockStmt->bindParam(':quantity', $item['quantity']);
-            $updateStockStmt->bindParam(':medicine_id', $item['medicine_id'], PDO::PARAM_INT);
-            $updateStockStmt->execute();
+        if ($customerId) {
+            $customerKey = findById($_SESSION['customers'], $customerId);
+            if ($customerKey !== false) {
+                $customerName = $_SESSION['customers'][$customerKey]['name'];
+            }
         }
         
-        // Commit transaction
-        $db->commit();
+        // Create new sale
+        $newSale = [
+            'id' => getNextId('sale'),
+            'customer_id' => $customerId,
+            'customer_name' => $customerName,
+            'total_amount' => floatval($totalAmount),
+            'payment_method' => ucwords($paymentMethod),
+            'sale_date' => date('Y-m-d'),
+            'created_at' => date('Y-m-d H:i:s'),
+            'items' => $saleItems
+        ];
+        
+        // Update stock for each item
+        foreach ($saleItems as $item) {
+            $medicineKey = findById($_SESSION['medicines'], $item['medicine_id']);
+            $_SESSION['medicines'][$medicineKey]['stock_quantity'] -= $item['quantity'];
+        }
+        
+        // Add sale to session
+        $_SESSION['sales'][] = $newSale;
         
         $result = [
-            'id' => $saleId,
-            'total_amount' => $totalAmount,
-            'payment_method' => $data['payment_method'],
+            'id' => $newSale['id'],
+            'total_amount' => $newSale['total_amount'],
+            'payment_method' => $newSale['payment_method'],
             'items_count' => count($saleItems)
         ];
         
         sendSuccess("Sale created successfully", $result);
         
     } catch (Exception $e) {
-        // Rollback transaction on error
-        $db->rollBack();
         sendError(400, $e->getMessage());
     }
 }

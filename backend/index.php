@@ -4,6 +4,7 @@
  * Entry point for API requests
  */
 
+require_once 'config/storage.php';
 require_once 'config/cors.php';
 
 // API Information endpoint

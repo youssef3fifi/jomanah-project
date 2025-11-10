@@ -5,13 +5,10 @@
  */
 
 require_once '../config/cors.php';
-require_once '../config/database.php';
+require_once '../config/storage.php';
 require_once '../includes/functions.php';
 
 try {
-    $database = new Database();
-    $db = $database->getConnection();
-    
     $method = getRequestMethod();
     $requestUri = $_SERVER['REQUEST_URI'];
     
@@ -21,13 +18,13 @@ try {
     
     // Determine report type from URL
     if (strpos($requestUri, '/reports/inventory') !== false) {
-        getInventoryReport($db);
+        getInventoryReport();
     } elseif (strpos($requestUri, '/reports/sales') !== false) {
-        getSalesReport($db);
+        getSalesReport();
     } elseif (strpos($requestUri, '/reports/expiring') !== false) {
-        getExpiringMedicinesReport($db);
+        getExpiringMedicinesReport();
     } elseif (strpos($requestUri, '/reports/dashboard') !== false) {
-        getDashboardStats($db);
+        getDashboardStats();
     } else {
         sendError(404, "Report type not found");
     }
@@ -39,48 +36,70 @@ try {
 /**
  * Get inventory report
  */
-function getInventoryReport($db) {
-    $query = "SELECT 
-                COUNT(*) as total_medicines,
-                SUM(stock_quantity) as total_stock,
-                COUNT(CASE WHEN stock_quantity < 50 THEN 1 END) as low_stock_count,
-                COUNT(CASE WHEN stock_quantity = 0 THEN 1 END) as out_of_stock_count,
-                COUNT(CASE WHEN expiry_date < DATE_ADD(CURDATE(), INTERVAL 30 DAY) THEN 1 END) as expiring_soon_count
-              FROM medicines";
+function getInventoryReport() {
+    $medicines = $_SESSION['medicines'];
+    $today = date('Y-m-d');
+    $thirtyDaysLater = date('Y-m-d', strtotime('+30 days'));
     
-    $stmt = $db->prepare($query);
-    $stmt->execute();
-    $summary = $stmt->fetch();
+    // Calculate summary
+    $summary = [
+        'total_medicines' => count($medicines),
+        'total_stock' => array_reduce($medicines, function($sum, $m) {
+            return $sum + $m['stock_quantity'];
+        }, 0),
+        'low_stock_count' => count(array_filter($medicines, function($m) {
+            return $m['stock_quantity'] < 50;
+        })),
+        'out_of_stock_count' => count(array_filter($medicines, function($m) {
+            return $m['stock_quantity'] == 0;
+        })),
+        'expiring_soon_count' => count(array_filter($medicines, function($m) use ($today, $thirtyDaysLater) {
+            return $m['expiry_date'] && $m['expiry_date'] <= $thirtyDaysLater && $m['expiry_date'] >= $today;
+        }))
+    ];
     
     // Get low stock medicines
-    $lowStockQuery = "SELECT id, name, category, stock_quantity, price
-                      FROM medicines
-                      WHERE stock_quantity < 50
-                      ORDER BY stock_quantity ASC
-                      LIMIT 10";
-    
-    $lowStockStmt = $db->prepare($lowStockQuery);
-    $lowStockStmt->execute();
-    $lowStock = $lowStockStmt->fetchAll();
+    $lowStock = array_filter($medicines, function($m) {
+        return $m['stock_quantity'] < 50;
+    });
+    usort($lowStock, function($a, $b) {
+        return $a['stock_quantity'] - $b['stock_quantity'];
+    });
+    $lowStock = array_slice($lowStock, 0, 10);
+    $lowStock = array_map(function($m) {
+        return [
+            'id' => $m['id'],
+            'name' => $m['name'],
+            'category' => $m['category'],
+            'stock_quantity' => $m['stock_quantity'],
+            'price' => $m['price']
+        ];
+    }, $lowStock);
     
     // Get category-wise inventory
-    $categoryQuery = "SELECT 
-                        category,
-                        COUNT(*) as medicine_count,
-                        SUM(stock_quantity) as total_stock,
-                        SUM(stock_quantity * price) as total_value
-                      FROM medicines
-                      WHERE category IS NOT NULL
-                      GROUP BY category
-                      ORDER BY total_value DESC";
-    
-    $categoryStmt = $db->prepare($categoryQuery);
-    $categoryStmt->execute();
-    $byCategory = $categoryStmt->fetchAll();
+    $byCategory = [];
+    foreach ($medicines as $medicine) {
+        $cat = $medicine['category'] ?? 'Uncategorized';
+        if (!isset($byCategory[$cat])) {
+            $byCategory[$cat] = [
+                'category' => $cat,
+                'medicine_count' => 0,
+                'total_stock' => 0,
+                'total_value' => 0
+            ];
+        }
+        $byCategory[$cat]['medicine_count']++;
+        $byCategory[$cat]['total_stock'] += $medicine['stock_quantity'];
+        $byCategory[$cat]['total_value'] += $medicine['stock_quantity'] * $medicine['price'];
+    }
+    $byCategory = array_values($byCategory);
+    usort($byCategory, function($a, $b) {
+        return $b['total_value'] <=> $a['total_value'];
+    });
     
     $report = [
         'summary' => $summary,
-        'low_stock_items' => $lowStock,
+        'low_stock_items' => array_values($lowStock),
         'by_category' => $byCategory
     ];
     
@@ -90,77 +109,90 @@ function getInventoryReport($db) {
 /**
  * Get sales report
  */
-function getSalesReport($db) {
+function getSalesReport() {
     // Date filters
     $dateFrom = isset($_GET['date_from']) ? $_GET['date_from'] : date('Y-m-01');
     $dateTo = isset($_GET['date_to']) ? $_GET['date_to'] : date('Y-m-d');
     
-    // Sales summary
-    $summaryQuery = "SELECT 
-                        COUNT(*) as total_sales,
-                        SUM(total_amount) as total_revenue,
-                        AVG(total_amount) as average_sale,
-                        COUNT(DISTINCT customer_id) as unique_customers
-                     FROM sales
-                     WHERE DATE(sale_date) BETWEEN :date_from AND :date_to";
+    // Filter sales by date range
+    $filteredSales = array_filter($_SESSION['sales'], function($sale) use ($dateFrom, $dateTo) {
+        $saleDate = substr($sale['sale_date'], 0, 10);
+        return $saleDate >= $dateFrom && $saleDate <= $dateTo;
+    });
     
-    $summaryStmt = $db->prepare($summaryQuery);
-    $summaryStmt->bindParam(':date_from', $dateFrom);
-    $summaryStmt->bindParam(':date_to', $dateTo);
-    $summaryStmt->execute();
-    $summary = $summaryStmt->fetch();
+    // Sales summary
+    $totalRevenue = array_reduce($filteredSales, function($sum, $sale) {
+        return $sum + $sale['total_amount'];
+    }, 0);
+    
+    $uniqueCustomers = array_unique(array_filter(array_map(function($sale) {
+        return $sale['customer_id'] ?? null;
+    }, $filteredSales)));
+    
+    $summary = [
+        'total_sales' => count($filteredSales),
+        'total_revenue' => $totalRevenue,
+        'average_sale' => count($filteredSales) > 0 ? $totalRevenue / count($filteredSales) : 0,
+        'unique_customers' => count($uniqueCustomers)
+    ];
     
     // Sales by payment method
-    $paymentQuery = "SELECT 
-                        payment_method,
-                        COUNT(*) as count,
-                        SUM(total_amount) as total
-                     FROM sales
-                     WHERE DATE(sale_date) BETWEEN :date_from AND :date_to
-                     GROUP BY payment_method";
-    
-    $paymentStmt = $db->prepare($paymentQuery);
-    $paymentStmt->bindParam(':date_from', $dateFrom);
-    $paymentStmt->bindParam(':date_to', $dateTo);
-    $paymentStmt->execute();
-    $byPayment = $paymentStmt->fetchAll();
+    $byPayment = [];
+    foreach ($filteredSales as $sale) {
+        $method = $sale['payment_method'];
+        if (!isset($byPayment[$method])) {
+            $byPayment[$method] = ['payment_method' => $method, 'count' => 0, 'total' => 0];
+        }
+        $byPayment[$method]['count']++;
+        $byPayment[$method]['total'] += $sale['total_amount'];
+    }
+    $byPayment = array_values($byPayment);
     
     // Daily sales trend
-    $trendQuery = "SELECT 
-                      DATE(sale_date) as date,
-                      COUNT(*) as sales_count,
-                      SUM(total_amount) as revenue
-                   FROM sales
-                   WHERE DATE(sale_date) BETWEEN :date_from AND :date_to
-                   GROUP BY DATE(sale_date)
-                   ORDER BY date DESC";
-    
-    $trendStmt = $db->prepare($trendQuery);
-    $trendStmt->bindParam(':date_from', $dateFrom);
-    $trendStmt->bindParam(':date_to', $dateTo);
-    $trendStmt->execute();
-    $trend = $trendStmt->fetchAll();
+    $trend = [];
+    foreach ($filteredSales as $sale) {
+        $date = substr($sale['sale_date'], 0, 10);
+        if (!isset($trend[$date])) {
+            $trend[$date] = ['date' => $date, 'sales_count' => 0, 'revenue' => 0];
+        }
+        $trend[$date]['sales_count']++;
+        $trend[$date]['revenue'] += $sale['total_amount'];
+    }
+    $trend = array_values($trend);
+    usort($trend, function($a, $b) {
+        return strcmp($b['date'], $a['date']);
+    });
     
     // Top selling medicines
-    $topMedicinesQuery = "SELECT 
-                            m.id,
-                            m.name,
-                            m.category,
-                            SUM(si.quantity) as total_quantity_sold,
-                            SUM(si.subtotal) as total_revenue
-                          FROM sale_items si
-                          JOIN medicines m ON si.medicine_id = m.id
-                          JOIN sales s ON si.sale_id = s.id
-                          WHERE DATE(s.sale_date) BETWEEN :date_from AND :date_to
-                          GROUP BY m.id
-                          ORDER BY total_revenue DESC
-                          LIMIT 10";
-    
-    $topMedicinesStmt = $db->prepare($topMedicinesQuery);
-    $topMedicinesStmt->bindParam(':date_from', $dateFrom);
-    $topMedicinesStmt->bindParam(':date_to', $dateTo);
-    $topMedicinesStmt->execute();
-    $topMedicines = $topMedicinesStmt->fetchAll();
+    $medicineStats = [];
+    foreach ($filteredSales as $sale) {
+        if (isset($sale['items'])) {
+            foreach ($sale['items'] as $item) {
+                $medId = $item['medicine_id'];
+                if (!isset($medicineStats[$medId])) {
+                    $medicineStats[$medId] = [
+                        'id' => $medId,
+                        'name' => $item['medicine_name'],
+                        'category' => null,
+                        'total_quantity_sold' => 0,
+                        'total_revenue' => 0
+                    ];
+                    // Get category from medicines
+                    $medKey = findById($_SESSION['medicines'], $medId);
+                    if ($medKey !== false) {
+                        $medicineStats[$medId]['category'] = $_SESSION['medicines'][$medKey]['category'];
+                    }
+                }
+                $medicineStats[$medId]['total_quantity_sold'] += $item['quantity'];
+                $medicineStats[$medId]['total_revenue'] += $item['subtotal'];
+            }
+        }
+    }
+    $topMedicines = array_values($medicineStats);
+    usort($topMedicines, function($a, $b) {
+        return $b['total_revenue'] <=> $a['total_revenue'];
+    });
+    $topMedicines = array_slice($topMedicines, 0, 10);
     
     $report = [
         'summary' => $summary,
@@ -179,49 +211,65 @@ function getSalesReport($db) {
 /**
  * Get expiring medicines report
  */
-function getExpiringMedicinesReport($db) {
+function getExpiringMedicinesReport() {
     $days = isset($_GET['days']) ? intval($_GET['days']) : 90;
+    $today = new DateTime();
+    $futureDate = new DateTime("+$days days");
     
-    $query = "SELECT 
-                id, 
-                name, 
-                category, 
-                price, 
-                stock_quantity, 
-                expiry_date,
-                DATEDIFF(expiry_date, CURDATE()) as days_until_expiry
-              FROM medicines
-              WHERE expiry_date IS NOT NULL 
-                AND expiry_date <= DATE_ADD(CURDATE(), INTERVAL :days DAY)
-              ORDER BY expiry_date ASC";
+    // Filter medicines with expiry dates within the range
+    $medicines = array_filter($_SESSION['medicines'], function($medicine) use ($today, $futureDate) {
+        if (!$medicine['expiry_date']) {
+            return false;
+        }
+        $expiryDate = new DateTime($medicine['expiry_date']);
+        return $expiryDate <= $futureDate;
+    });
     
-    $stmt = $db->prepare($query);
-    $stmt->bindParam(':days', $days, PDO::PARAM_INT);
-    $stmt->execute();
-    
-    $medicines = $stmt->fetchAll();
-    
-    // Categorize by urgency
+    // Calculate days until expiry and categorize
     $expired = [];
     $expiringSoon = []; // 0-30 days
     $expiringLater = []; // 31-90 days
     
     foreach ($medicines as $medicine) {
-        if ($medicine['days_until_expiry'] < 0) {
-            $expired[] = $medicine;
-        } elseif ($medicine['days_until_expiry'] <= 30) {
-            $expiringSoon[] = $medicine;
+        $expiryDate = new DateTime($medicine['expiry_date']);
+        $daysUntilExpiry = $today->diff($expiryDate)->days;
+        if ($expiryDate < $today) {
+            $daysUntilExpiry = -$daysUntilExpiry;
+        }
+        
+        $medicineData = [
+            'id' => $medicine['id'],
+            'name' => $medicine['name'],
+            'category' => $medicine['category'],
+            'price' => $medicine['price'],
+            'stock_quantity' => $medicine['stock_quantity'],
+            'expiry_date' => $medicine['expiry_date'],
+            'days_until_expiry' => $daysUntilExpiry
+        ];
+        
+        if ($daysUntilExpiry < 0) {
+            $expired[] = $medicineData;
+        } elseif ($daysUntilExpiry <= 30) {
+            $expiringSoon[] = $medicineData;
         } else {
-            $expiringLater[] = $medicine;
+            $expiringLater[] = $medicineData;
         }
     }
+    
+    // Sort by expiry date
+    $sortByDate = function($a, $b) {
+        return strcmp($a['expiry_date'], $b['expiry_date']);
+    };
+    usort($expired, $sortByDate);
+    usort($expiringSoon, $sortByDate);
+    usort($expiringLater, $sortByDate);
     
     $report = [
         'summary' => [
             'expired_count' => count($expired),
             'expiring_soon_count' => count($expiringSoon),
             'expiring_later_count' => count($expiringLater),
-            'total_count' => count($medicines)
+            'total_count' => count($expired) + count($expiringSoon) + count($expiringLater)
         ],
         'expired' => $expired,
         'expiring_soon' => $expiringSoon,
@@ -234,64 +282,69 @@ function getExpiringMedicinesReport($db) {
 /**
  * Get dashboard statistics
  */
-function getDashboardStats($db) {
-    // Today's sales
-    $todayQuery = "SELECT 
-                    COUNT(*) as sales_count,
-                    COALESCE(SUM(total_amount), 0) as revenue
-                   FROM sales
-                   WHERE DATE(sale_date) = CURDATE()";
+function getDashboardStats() {
+    $today = date('Y-m-d');
+    $currentMonth = date('Y-m');
+    $thirtyDaysLater = date('Y-m-d', strtotime('+30 days'));
     
-    $todayStmt = $db->prepare($todayQuery);
-    $todayStmt->execute();
-    $today = $todayStmt->fetch();
+    // Today's sales
+    $todaySales = array_filter($_SESSION['sales'], function($sale) use ($today) {
+        return substr($sale['sale_date'], 0, 10) === $today;
+    });
+    $todayRevenue = array_reduce($todaySales, function($sum, $sale) {
+        return $sum + $sale['total_amount'];
+    }, 0);
     
     // This month's sales
-    $monthQuery = "SELECT 
-                    COUNT(*) as sales_count,
-                    COALESCE(SUM(total_amount), 0) as revenue
-                   FROM sales
-                   WHERE MONTH(sale_date) = MONTH(CURDATE()) 
-                     AND YEAR(sale_date) = YEAR(CURDATE())";
-    
-    $monthStmt = $db->prepare($monthQuery);
-    $monthStmt->execute();
-    $month = $monthStmt->fetch();
+    $monthSales = array_filter($_SESSION['sales'], function($sale) use ($currentMonth) {
+        return substr($sale['sale_date'], 0, 7) === $currentMonth;
+    });
+    $monthRevenue = array_reduce($monthSales, function($sum, $sale) {
+        return $sum + $sale['total_amount'];
+    }, 0);
     
     // Inventory stats
-    $inventoryQuery = "SELECT 
-                        COUNT(*) as total_medicines,
-                        SUM(stock_quantity) as total_stock,
-                        COUNT(CASE WHEN stock_quantity < 50 THEN 1 END) as low_stock_count,
-                        COUNT(CASE WHEN expiry_date < DATE_ADD(CURDATE(), INTERVAL 30 DAY) THEN 1 END) as expiring_soon_count
-                       FROM medicines";
+    $medicines = $_SESSION['medicines'];
+    $inventory = [
+        'total_medicines' => count($medicines),
+        'total_stock' => array_reduce($medicines, function($sum, $m) {
+            return $sum + $m['stock_quantity'];
+        }, 0),
+        'low_stock_count' => count(array_filter($medicines, function($m) {
+            return $m['stock_quantity'] < 50;
+        })),
+        'expiring_soon_count' => count(array_filter($medicines, function($m) use ($today, $thirtyDaysLater) {
+            return $m['expiry_date'] && $m['expiry_date'] <= $thirtyDaysLater && $m['expiry_date'] >= $today;
+        }))
+    ];
     
-    $inventoryStmt = $db->prepare($inventoryQuery);
-    $inventoryStmt->execute();
-    $inventory = $inventoryStmt->fetch();
-    
-    // Customer count
-    $customerQuery = "SELECT COUNT(*) as total_customers FROM customers";
-    $customerStmt = $db->prepare($customerQuery);
-    $customerStmt->execute();
-    $customers = $customerStmt->fetch();
-    
-    // Recent sales
-    $recentQuery = "SELECT s.id, s.total_amount, s.payment_method, s.sale_date, c.name as customer_name
-                    FROM sales s
-                    LEFT JOIN customers c ON s.customer_id = c.id
-                    ORDER BY s.sale_date DESC
-                    LIMIT 5";
-    
-    $recentStmt = $db->prepare($recentQuery);
-    $recentStmt->execute();
-    $recentSales = $recentStmt->fetchAll();
+    // Recent sales (last 5)
+    $recentSales = $_SESSION['sales'];
+    usort($recentSales, function($a, $b) {
+        return strcmp($b['sale_date'], $a['sale_date']);
+    });
+    $recentSales = array_slice($recentSales, 0, 5);
+    $recentSales = array_map(function($sale) {
+        return [
+            'id' => $sale['id'],
+            'total_amount' => $sale['total_amount'],
+            'payment_method' => $sale['payment_method'],
+            'sale_date' => $sale['sale_date'],
+            'customer_name' => $sale['customer_name'] ?? null
+        ];
+    }, $recentSales);
     
     $stats = [
-        'today' => $today,
-        'this_month' => $month,
+        'today' => [
+            'sales_count' => count($todaySales),
+            'revenue' => $todayRevenue
+        ],
+        'this_month' => [
+            'sales_count' => count($monthSales),
+            'revenue' => $monthRevenue
+        ],
         'inventory' => $inventory,
-        'total_customers' => $customers['total_customers'],
+        'total_customers' => count($_SESSION['customers']),
         'recent_sales' => $recentSales
     ];
     
