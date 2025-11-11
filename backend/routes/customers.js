@@ -121,8 +121,8 @@ router.post('/', (req, res) => {
             });
         }
         
-        // Validate email format if provided
-        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        // Validate email format if provided (using a more specific regex to prevent ReDoS)
+        if (email && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)) {
             return res.status(400).json({
                 success: false,
                 message: 'Invalid email format'
@@ -169,8 +169,8 @@ router.put('/:id', (req, res) => {
         
         const { name, phone, email, address } = req.body;
         
-        // Validate email format if provided
-        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        // Validate email format if provided (using a more specific regex to prevent ReDoS)
+        if (email && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email)) {
             return res.status(400).json({
                 success: false,
                 message: 'Invalid email format'
