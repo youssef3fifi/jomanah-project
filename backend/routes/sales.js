@@ -39,10 +39,24 @@ router.get('/', (req, res) => {
         // Sort by date (newest first)
         result.sort((a, b) => new Date(b.saleDate) - new Date(a.saleDate));
         
+        // Pagination (optional)
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 100;
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+        const paginatedResult = result.slice(startIndex, endIndex);
+        
         res.json({
             success: true,
-            data: result,
-            count: result.length
+            data: {
+                items: paginatedResult,
+                pagination: {
+                    current_page: page,
+                    total_pages: Math.ceil(result.length / limit),
+                    total_items: result.length,
+                    items_per_page: limit
+                }
+            }
         });
     } catch (error) {
         res.status(500).json({
@@ -120,10 +134,10 @@ router.post('/', (req, res) => {
                 });
             }
             
-            if (medicine.stock < item.quantity) {
+            if (medicine.stock_quantity < item.quantity) {
                 return res.status(400).json({
                     success: false,
-                    message: `Insufficient stock for ${medicine.name}. Available: ${medicine.stock}, Requested: ${item.quantity}`
+                    message: `Insufficient stock for ${medicine.name}. Available: ${medicine.stock_quantity}, Requested: ${item.quantity}`
                 });
             }
             
@@ -162,7 +176,7 @@ router.post('/', (req, res) => {
         // Update stock for each item
         for (const item of items) {
             const medicine = storage.findById(storage.medicines, item.medicineId);
-            medicine.stock -= item.quantity;
+            medicine.stock_quantity -= item.quantity;
         }
         
         storage.sales.push(newSale);

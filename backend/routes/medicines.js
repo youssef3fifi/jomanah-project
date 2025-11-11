@@ -28,13 +28,27 @@ router.get('/', (req, res) => {
         
         // Filter low stock
         if (req.query.low_stock === 'true') {
-            result = result.filter(m => m.stock < 50);
+            result = result.filter(m => m.stock_quantity < 50);
         }
+        
+        // Pagination (optional)
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 100;
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+        const paginatedResult = result.slice(startIndex, endIndex);
         
         res.json({
             success: true,
-            data: result,
-            count: result.length
+            data: {
+                items: paginatedResult,
+                pagination: {
+                    current_page: page,
+                    total_pages: Math.ceil(result.length / limit),
+                    total_items: result.length,
+                    items_per_page: limit
+                }
+            }
         });
     } catch (error) {
         res.status(500).json({
@@ -49,7 +63,7 @@ router.get('/', (req, res) => {
 router.get('/low-stock', (req, res) => {
     try {
         const threshold = parseInt(req.query.threshold) || 50;
-        const lowStock = storage.medicines.filter(m => m.stock < threshold);
+        const lowStock = storage.medicines.filter(m => m.stock_quantity < threshold);
         
         res.json({
             success: true,
@@ -93,13 +107,13 @@ router.get('/:id', (req, res) => {
 // Create new medicine
 router.post('/', (req, res) => {
     try {
-        const { name, category, price, stock, expiryDate, supplier, description } = req.body;
+        const { name, category, price, stock_quantity, expiry_date, supplier, description } = req.body;
         
         // Validate required fields
-        if (!name || !category || price === undefined || stock === undefined) {
+        if (!name || !category || price === undefined || stock_quantity === undefined) {
             return res.status(400).json({
                 success: false,
-                message: 'Missing required fields: name, category, price, stock'
+                message: 'Missing required fields: name, category, price, stock_quantity'
             });
         }
         
@@ -111,10 +125,10 @@ router.post('/', (req, res) => {
             });
         }
         
-        if (typeof stock !== 'number' || stock < 0) {
+        if (typeof stock_quantity !== 'number' || stock_quantity < 0) {
             return res.status(400).json({
                 success: false,
-                message: 'Stock must be a positive number'
+                message: 'Stock quantity must be a positive number'
             });
         }
         
@@ -124,8 +138,8 @@ router.post('/', (req, res) => {
             name,
             category,
             price,
-            stock,
-            expiryDate: expiryDate || null,
+            stock_quantity,
+            expiry_date: expiry_date || null,
             supplier: supplier || '',
             description: description || ''
         };
@@ -158,7 +172,7 @@ router.put('/:id', (req, res) => {
             });
         }
         
-        const { name, category, price, stock, expiryDate, supplier, description } = req.body;
+        const { name, category, price, stock_quantity, expiry_date, supplier, description } = req.body;
         
         // Validate data if provided
         if (price !== undefined && (typeof price !== 'number' || price < 0)) {
@@ -168,10 +182,10 @@ router.put('/:id', (req, res) => {
             });
         }
         
-        if (stock !== undefined && (typeof stock !== 'number' || stock < 0)) {
+        if (stock_quantity !== undefined && (typeof stock_quantity !== 'number' || stock_quantity < 0)) {
             return res.status(400).json({
                 success: false,
-                message: 'Stock must be a positive number'
+                message: 'Stock quantity must be a positive number'
             });
         }
         
@@ -179,8 +193,8 @@ router.put('/:id', (req, res) => {
         if (name !== undefined) medicine.name = name;
         if (category !== undefined) medicine.category = category;
         if (price !== undefined) medicine.price = price;
-        if (stock !== undefined) medicine.stock = stock;
-        if (expiryDate !== undefined) medicine.expiryDate = expiryDate;
+        if (stock_quantity !== undefined) medicine.stock_quantity = stock_quantity;
+        if (expiry_date !== undefined) medicine.expiry_date = expiry_date;
         if (supplier !== undefined) medicine.supplier = supplier;
         if (description !== undefined) medicine.description = description;
         

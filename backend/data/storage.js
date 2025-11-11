@@ -12,8 +12,8 @@ let medicines = [
         name: 'Paracetamol 500mg', 
         category: 'Pain Relief', 
         price: 50, 
-        stock: 100, 
-        expiryDate: '2026-12-31', 
+        stock_quantity: 100, 
+        expiry_date: '2026-12-31', 
         supplier: 'PharmaCorp', 
         description: 'Pain and fever relief' 
     },
@@ -22,8 +22,8 @@ let medicines = [
         name: 'Aspirin 100mg', 
         category: 'Cardiovascular', 
         price: 30, 
-        stock: 200, 
-        expiryDate: '2027-06-30', 
+        stock_quantity: 200, 
+        expiry_date: '2027-06-30', 
         supplier: 'MediSupply', 
         description: 'Blood thinner' 
     },
@@ -32,8 +32,8 @@ let medicines = [
         name: 'Amoxicillin 250mg', 
         category: 'Antibiotics', 
         price: 120, 
-        stock: 50, 
-        expiryDate: '2025-12-31', 
+        stock_quantity: 50, 
+        expiry_date: '2025-12-31', 
         supplier: 'PharmaCorp', 
         description: 'Antibiotic' 
     },
@@ -42,8 +42,8 @@ let medicines = [
         name: 'Ibuprofen 400mg', 
         category: 'Pain Relief', 
         price: 65, 
-        stock: 150, 
-        expiryDate: '2026-08-15', 
+        stock_quantity: 150, 
+        expiry_date: '2026-08-15', 
         supplier: 'HealthPlus', 
         description: 'Anti-inflammatory' 
     },
@@ -52,8 +52,8 @@ let medicines = [
         name: 'Omeprazole 20mg', 
         category: 'Gastrointestinal', 
         price: 85, 
-        stock: 75, 
-        expiryDate: '2026-03-20', 
+        stock_quantity: 75, 
+        expiry_date: '2026-03-20', 
         supplier: 'MediSupply', 
         description: 'Reduces stomach acid' 
     },
@@ -62,8 +62,8 @@ let medicines = [
         name: 'Vitamin D3 1000IU', 
         category: 'Supplements', 
         price: 45, 
-        stock: 300, 
-        expiryDate: '2027-01-10', 
+        stock_quantity: 300, 
+        expiry_date: '2027-01-10', 
         supplier: 'HealthPlus', 
         description: 'Bone health' 
     }

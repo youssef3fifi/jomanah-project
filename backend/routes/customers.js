@@ -22,10 +22,24 @@ router.get('/', (req, res) => {
             );
         }
         
+        // Pagination (optional)
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 100;
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+        const paginatedResult = result.slice(startIndex, endIndex);
+        
         res.json({
             success: true,
-            data: result,
-            count: result.length
+            data: {
+                items: paginatedResult,
+                pagination: {
+                    current_page: page,
+                    total_pages: Math.ceil(result.length / limit),
+                    total_items: result.length,
+                    items_per_page: limit
+                }
+            }
         });
     } catch (error) {
         res.status(500).json({
