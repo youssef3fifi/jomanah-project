@@ -1,103 +1,96 @@
-# 🏥 PharmaCare Management System
+# 🏥 Pharmacy Management System
 
-A professional Pharmacy Management System built with PHP backend and modern frontend. Features complete inventory, sales, and customer management with **in-memory storage** using PHP sessions - perfect for testing, development, and demonstrations without database setup.
-
-## 📋 Table of Contents
-
-- [Features](#features)
-- [Technology Stack](#technology-stack)
-- [Project Structure](#project-structure)
-- [Local Development Setup](#local-development-setup)
-- [AWS EC2 Deployment](#aws-ec2-deployment)
-- [AWS RDS Database Setup](#aws-rds-database-setup)
-- [API Documentation](#api-documentation)
-- [Security Features](#security-features)
-- [Troubleshooting](#troubleshooting)
+A professional, production-ready Pharmacy Management System built with **Node.js/Express.js backend** and **Vanilla JavaScript frontend**. Features complete inventory, sales, and customer management with **in-memory storage** - perfect for development, testing, and quick deployment without database setup.
 
 ## ✨ Features
 
 ### Comprehensive Functionality
-- **Dashboard**: Real-time statistics and quick actions
-- **Inventory Management**: Add, edit, delete medicines with stock tracking
-- **Sales Processing**: Point-of-sale system with cart functionality
-- **Customer Management**: Customer records and purchase history
-- **Reports & Analytics**: 
+- **📊 Dashboard**: Real-time statistics, revenue tracking, and quick actions
+- **💊 Inventory Management**: Full CRUD operations for medicines with stock tracking
+- **🛒 Sales/POS System**: Point-of-sale with cart functionality and automatic stock updates
+- **👥 Customer Management**: Customer records with purchase history tracking
+- **📈 Reports & Analytics**: 
   - Inventory reports with low stock alerts
   - Sales reports with payment method breakdown
-  - Expiring medicines tracking
+  - Expiring medicines tracking (within 3 months)
+  - Top-selling medicines analysis
+  - Dashboard statistics
 
 ### Professional Features
-- ✅ RESTful API architecture
-- ✅ Responsive design for mobile and desktop
-- ✅ Real-time stock updates
-- ✅ Search and filter functionality
-- ✅ Form validations
-- ✅ Alert notifications
-- ✅ Pagination for large datasets
+- ✅ RESTful API architecture with Express.js
+- ✅ In-memory storage using JavaScript arrays
 - ✅ CORS-enabled for frontend-backend separation
+- ✅ Responsive design for mobile, tablet, and desktop
+- ✅ Real-time stock updates on sales
+- ✅ Search and filter functionality
+- ✅ Form validations with error messages
+- ✅ Toast notifications for user feedback
+- ✅ XSS protection with HTML escaping
+- ✅ AWS EC2 deployment ready
 
 ## 🛠 Technology Stack
 
 ### Backend
-- **Language**: PHP 7.4+
-- **Storage**: In-Memory PHP Sessions
+- **Runtime**: Node.js (v14+)
+- **Framework**: Express.js v4.18
+- **Storage**: In-Memory JavaScript Arrays
 - **Architecture**: RESTful API
-- **Server**: Apache with mod_rewrite
+- **CORS**: Configured for cross-origin requests
 
 ### Frontend
-- **Core**: HTML5, CSS3, Vanilla JavaScript
+- **Core**: HTML5, CSS3, Vanilla JavaScript (No frameworks)
 - **Design**: Modern, responsive UI with pharmacy theme
-- **Features**: Real-time updates, modals, notifications
+- **Features**: Real-time updates, modals, notifications, form validation
 
 ### Data Storage
-- **Type**: In-Memory Storage using PHP Sessions
-- **Persistence**: Data persists during the session lifetime
-- **Reset**: Data resets when server restarts
-- **Purpose**: Perfect for testing, development, and demonstrations
+- **Type**: In-Memory Storage using JavaScript Arrays
+- **Persistence**: Data persists only while server is running
+- **Reset Behavior**: Data resets to initial sample data on server restart
+- **Perfect For**: Development, testing, demos, and quick deployment
 
 ## 📁 Project Structure
 
 ```
-pharmacy-management-system/
+jomanah-project/
 ├── backend/
-│   ├── api/
-│   │   ├── medicines.php      # Medicines CRUD operations
-│   │   ├── customers.php      # Customers management
-│   │   ├── sales.php          # Sales transactions
-│   │   └── reports.php        # Reports and analytics
-│   ├── config/
-│   │   ├── storage.php        # In-memory storage with sessions
-│   │   └── cors.php           # CORS configuration
-│   ├── includes/
-│   │   └── functions.php      # Helper functions
-│   ├── .htaccess              # URL rewriting rules
-│   └── index.php              # API entry point
+│   ├── server.js                 # Main Express server
+│   ├── package.json              # Node dependencies
+│   ├── .env.example              # Environment variables template
+│   ├── routes/
+│   │   ├── medicines.js          # Medicines CRUD API
+│   │   ├── customers.js          # Customers CRUD API
+│   │   ├── sales.js              # Sales API with stock updates
+│   │   └── reports.js            # Reports and analytics API
+│   ├── data/
+│   │   └── storage.js            # In-memory data storage
+│   └── middleware/
+│       └── cors.js               # CORS middleware
 ├── frontend/
-│   ├── index.html             # Dashboard
-│   ├── inventory.html         # Inventory management
-│   ├── sales.html             # Sales processing
-│   ├── customers.html         # Customer management
-│   ├── reports.html           # Reports & analytics
+│   ├── index.html                # Dashboard page
+│   ├── inventory.html            # Inventory management
+│   ├── sales.html                # Sales/POS page
+│   ├── customers.html            # Customer management
+│   ├── reports.html              # Reports page
 │   ├── css/
-│   │   └── style.css          # Main stylesheet
+│   │   └── style.css             # Main stylesheet
 │   └── js/
-│       ├── config.js          # API URL configuration
-│       ├── main.js            # Common utilities
-│       ├── inventory.js       # Inventory logic
-│       ├── sales.js           # Sales logic
-│       └── customers.js       # Customer logic
+│       ├── config.js             # API configuration
+│       ├── main.js               # Common utilities
+│       ├── inventory.js          # Inventory page logic
+│       ├── sales.js              # Sales page logic
+│       └── customers.js          # Customers page logic
 ├── .gitignore
 └── README.md
 ```
 
-## 🚀 Local Development Setup
+## 🚀 Quick Start
 
 ### Prerequisites
-- PHP 7.4 or higher with session support
-- Apache web server with mod_rewrite enabled
-- Web browser (Chrome, Firefox, Safari, Edge)
+- **Node.js** v14.0.0 or higher
+- **npm** (comes with Node.js)
+- Modern web browser (Chrome, Firefox, Safari, Edge)
 
-### Step-by-Step Installation
+### Installation & Setup
 
 1. **Clone the Repository**
    ```bash
@@ -105,456 +98,500 @@ pharmacy-management-system/
    cd jomanah-project
    ```
 
-2. **Configure Frontend**
-   
-   Edit `frontend/js/config.js`:
-   ```javascript
-   const API_BASE_URL = 'http://localhost/backend';
-   ```
-
-3. **Set Up Apache Virtual Host** (Optional but recommended)
-   
-   Create a virtual host configuration:
-   ```apache
-   <VirtualHost *:80>
-       ServerName pharmacy.local
-       DocumentRoot /path/to/jomanah-project
-       
-       <Directory /path/to/jomanah-project>
-           Options Indexes FollowSymLinks
-           AllowOverride All
-           Require all granted
-       </Directory>
-   </VirtualHost>
-   ```
-   
-   Add to your hosts file:
-   ```
-   127.0.0.1 pharmacy.local
-   ```
-
-4. **Start Development Server**
-   
-   Using PHP built-in server (for testing):
+2. **Install Backend Dependencies**
    ```bash
-   # Backend (with router for URL rewriting)
    cd backend
-   php -S localhost:8000 router.php
+   npm install
+   ```
+
+3. **Start the Backend Server**
+   ```bash
+   npm start
+   ```
    
-   # Frontend (in another terminal)
+   Server will start on `http://localhost:3000`
+   
+   You should see:
+   ```
+   ═══════════════════════════════════════════════════════
+   🏥 Pharmacy Management System API
+   ═══════════════════════════════════════════════════════
+   🚀 Server running on http://0.0.0.0:3000
+   📊 Environment: development
+   💾 Storage: In-Memory (resets on server restart)
+   ═══════════════════════════════════════════════════════
+   ```
+
+4. **Open the Frontend**
+   
+   Open `frontend/index.html` directly in your browser, OR use a local server:
+   
+   ```bash
+   # Option 1: Using Python
    cd frontend
-   php -S localhost:8080
+   python -m http.server 8080
+   
+   # Option 2: Using Node.js http-server
+   npm install -g http-server
+   cd frontend
+   http-server -p 8080
+   
+   # Option 3: Use VS Code Live Server extension
    ```
    
-   Then update `frontend/js/config.js`:
-   ```javascript
-   const API_BASE_URL = 'http://localhost:8000';
-   ```
-   
-   **Note**: The `router.php` file emulates Apache's `.htaccess` URL rewriting for the PHP built-in server. For production deployment with Apache, this file is not needed as Apache handles routing via `.htaccess`.
+   Access the application at `http://localhost:8080`
 
-5. **Access the Application**
-   
-   Open your browser and navigate to:
-   - Frontend: `http://localhost:8080` (or your virtual host)
-   - Backend API: `http://localhost:8000` (or your backend URL)
+### Initial Data
 
-### Data Storage Notes
-- **Session-Based**: All data is stored in PHP sessions (`$_SESSION`)
-- **Sample Data**: Pre-loaded with 6 medicines, 3 customers, and 2 sales
-- **Persistence**: Data persists as long as the PHP session is active
-- **Reset**: Data resets when:
-  - Server restarts
-  - Session expires (default: 24 minutes of inactivity)
-  - Browser cookies are cleared
-- **Perfect For**: Testing, development, demonstrations, and prototyping
+The system comes pre-loaded with sample data:
+- **6 Medicines**: Various categories (Pain Relief, Antibiotics, etc.)
+- **3 Customers**: Sample customer records
+- **2 Sales**: Example transactions
+
+## 📚 API Documentation
+
+### Base URL
+```
+http://localhost:3000/api
+```
+
+### Endpoints
+
+#### Medicines API
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/medicines` | Get all medicines (supports filtering) |
+| GET | `/api/medicines/:id` | Get single medicine by ID |
+| GET | `/api/medicines/low-stock` | Get medicines with low stock |
+| POST | `/api/medicines` | Create new medicine |
+| PUT | `/api/medicines/:id` | Update medicine |
+| DELETE | `/api/medicines/:id` | Delete medicine |
+
+**Query Parameters for GET /api/medicines:**
+- `category`: Filter by category
+- `search`: Search in name/description
+- `low_stock=true`: Show items with stock < 50
+
+**Example - Create Medicine:**
+```bash
+curl -X POST http://localhost:3000/api/medicines \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Aspirin 500mg",
+    "category": "Pain Relief",
+    "price": 25,
+    "stock": 100,
+    "expiryDate": "2026-12-31",
+    "supplier": "PharmaCorp",
+    "description": "Pain reliever"
+  }'
+```
+
+#### Customers API
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/customers` | Get all customers |
+| GET | `/api/customers/:id` | Get single customer |
+| GET | `/api/customers/:id/history` | Get customer purchase history |
+| POST | `/api/customers` | Create new customer |
+| PUT | `/api/customers/:id` | Update customer |
+| DELETE | `/api/customers/:id` | Delete customer |
+
+**Example - Create Customer:**
+```bash
+curl -X POST http://localhost:3000/api/customers \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "John Doe",
+    "phone": "01234567890",
+    "email": "john@example.com",
+    "address": "123 Main St"
+  }'
+```
+
+#### Sales API
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/sales` | Get all sales (supports filtering) |
+| GET | `/api/sales/:id` | Get single sale |
+| POST | `/api/sales` | Create new sale (updates stock automatically) |
+| DELETE | `/api/sales/:id` | Delete sale |
+
+**Query Parameters for GET /api/sales:**
+- `customerId`: Filter by customer
+- `paymentMethod`: Filter by payment method
+- `dateFrom`: Filter from date (YYYY-MM-DD)
+- `dateTo`: Filter to date (YYYY-MM-DD)
+
+**Example - Create Sale:**
+```bash
+curl -X POST http://localhost:3000/api/sales \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customerId": 1,
+    "paymentMethod": "Cash",
+    "items": [
+      {
+        "medicineId": 1,
+        "quantity": 2
+      },
+      {
+        "medicineId": 3,
+        "quantity": 1
+      }
+    ]
+  }'
+```
+
+**Valid Payment Methods:**
+- Cash
+- Credit Card
+- Debit Card
+- Insurance
+
+#### Reports API
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/reports/dashboard` | Dashboard statistics |
+| GET | `/api/reports/inventory` | Inventory report by category |
+| GET | `/api/reports/sales` | Sales report with filters |
+| GET | `/api/reports/expiring` | Medicines expiring soon |
+| GET | `/api/reports/top-selling` | Top selling medicines |
+
+**Example - Dashboard Statistics:**
+```bash
+curl http://localhost:3000/api/reports/dashboard
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "totalMedicines": 6,
+    "totalCustomers": 3,
+    "totalSales": 2,
+    "totalRevenue": 610,
+    "todaySales": 0,
+    "todayRevenue": 0,
+    "lowStockCount": 0,
+    "expiringCount": 1
+  }
+}
+```
 
 ## ☁️ AWS EC2 Deployment
 
 ### Prerequisites
 - AWS account
 - EC2 instance (Ubuntu 20.04 or Amazon Linux 2)
-- Security group with HTTP (80) and SSH (22) open
+- Security group with ports 22 (SSH) and 3000 (API) open
 
-### Deployment Steps
+### Step-by-Step Deployment
 
 1. **Launch EC2 Instance**
+   - Choose Ubuntu Server 20.04 LTS or Amazon Linux 2
+   - Instance type: t2.micro (free tier eligible)
+   - Configure security group:
+     - SSH (22): Your IP
+     - Custom TCP (3000): 0.0.0.0/0 (or your specific IPs)
+
+2. **Connect to EC2 Instance**
    ```bash
-   # Connect to your instance
-   ssh -i your-key.pem ubuntu@your-ec2-ip
+   ssh -i your-key.pem ubuntu@your-ec2-public-ip
    ```
 
-2. **Install Apache and PHP**
+3. **Install Node.js**
    
    **For Ubuntu:**
    ```bash
-   sudo apt update
-   sudo apt install -y apache2 php libapache2-mod-php
-   sudo a2enmod rewrite
-   sudo systemctl restart apache2
+   curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+   sudo apt-get install -y nodejs
    ```
    
    **For Amazon Linux:**
    ```bash
-   sudo yum update -y
-   sudo amazon-linux-extras install -y php7.4
-   sudo yum install -y httpd
-   sudo systemctl start httpd
-   sudo systemctl enable httpd
+   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+   source ~/.bashrc
+   nvm install 18
    ```
 
-3. **Deploy Application Files**
+4. **Install Git and Clone Repository**
    ```bash
-   cd /var/www/html
-   sudo git clone https://github.com/youssef3fifi/jomanah-project.git
-   sudo mv jomanah-project/* .
-   sudo chown -R www-data:www-data /var/www/html
-   sudo chmod -R 755 /var/www/html
+   sudo apt-get update
+   sudo apt-get install -y git
+   git clone https://github.com/youssef3fifi/jomanah-project.git
+   cd jomanah-project
    ```
 
-4. **Configure Apache**
-   
-   Edit `/etc/apache2/sites-available/000-default.conf` (Ubuntu):
-   ```apache
-   <VirtualHost *:80>
-       ServerAdmin admin@pharmacy.local
-       DocumentRoot /var/www/html
-       
-       <Directory /var/www/html>
-           Options Indexes FollowSymLinks
-           AllowOverride All
-           Require all granted
-       </Directory>
-       
-       ErrorLog ${APACHE_LOG_DIR}/error.log
-       CustomLog ${APACHE_LOG_DIR}/access.log combined
-   </VirtualHost>
-   ```
-   
-   Restart Apache:
+5. **Install Backend Dependencies**
    ```bash
-   sudo systemctl restart apache2
+   cd backend
+   npm install
    ```
 
-5. **Update Frontend Configuration**
+6. **Configure Environment (Optional)**
+   ```bash
+   cp .env.example .env
+   nano .env
+   # Edit PORT and other settings if needed
+   ```
+
+7. **Start Server with PM2 (Production)**
+   ```bash
+   sudo npm install -g pm2
+   pm2 start server.js --name pharmacy-api
+   pm2 startup
+   pm2 save
+   ```
+   
+   Or use nohup for simple deployment:
+   ```bash
+   nohup npm start > server.log 2>&1 &
+   ```
+
+8. **Update Frontend Configuration**
    
    Edit `frontend/js/config.js`:
    ```javascript
-   const API_BASE_URL = 'http://YOUR_EC2_PUBLIC_IP/backend';
+   const API_BASE_URL = 'http://YOUR_EC2_PUBLIC_IP:3000';
    ```
 
-6. **Set Permissions**
-   ```bash
-   sudo chown -R www-data:www-data /var/www/html
-   sudo chmod -R 755 /var/www/html
-   ```
-
-7. **Test the Application**
+9. **Serve Frontend Files**
    
-   Visit: `http://YOUR_EC2_PUBLIC_IP`
+   **Option 1: Using nginx**
+   ```bash
+   sudo apt-get install -y nginx
+   sudo cp -r frontend/* /var/www/html/
+   sudo systemctl restart nginx
+   ```
+   
+   **Option 2: Direct file access**
+   Upload frontend files to your server and access via file:// or use a simple HTTP server
 
-### Important Notes for Production
-- **Session Storage**: PHP sessions are stored on the server's file system
-- **Data Persistence**: Data resets when the server restarts
-- **Scalability**: For production with multiple servers, consider:
-  - Redis or Memcached for shared session storage
-  - Database backend (MySQL, PostgreSQL) for permanent storage
-- **Session Configuration**: Adjust session timeout in `php.ini` if needed
+10. **Access Your Application**
+    - Frontend: `http://YOUR_EC2_PUBLIC_IP` (if using nginx)
+    - API: `http://YOUR_EC2_PUBLIC_IP:3000`
 
-## 📚 API Documentation
+### Production Recommendations
 
-### Base URL
-```
-http://YOUR_SERVER_IP/backend/api
-```
+1. **Use HTTPS**
+   ```bash
+   sudo apt-get install certbot python3-certbot-nginx
+   sudo certbot --nginx
+   ```
 
-### Authentication
-Currently, the API is open. For production, implement authentication middleware.
+2. **Set up nginx as reverse proxy**
+   ```nginx
+   location /api {
+       proxy_pass http://localhost:3000;
+       proxy_http_version 1.1;
+       proxy_set_header Upgrade $http_upgrade;
+       proxy_set_header Connection 'upgrade';
+       proxy_set_header Host $host;
+       proxy_cache_bypass $http_upgrade;
+   }
+   ```
 
-### Endpoints
+3. **Configure firewall**
+   ```bash
+   sudo ufw allow 22
+   sudo ufw allow 80
+   sudo ufw allow 443
+   sudo ufw enable
+   ```
 
-#### Medicines
+4. **Monitor with PM2**
+   ```bash
+   pm2 status
+   pm2 logs pharmacy-api
+   pm2 monit
+   ```
 
-**List all medicines**
-```
-GET /medicines
-Query Parameters:
-  - page: Page number (default: 1)
-  - limit: Items per page (default: 10, max: 100)
-  - search: Search term
-  - category: Filter by category
-  - low_stock: true/false (show items with stock < 50)
-```
+## 💾 Data Persistence
 
-**Get medicine details**
-```
-GET /medicines/{id}
-```
+### Important Notes
 
-**Create medicine**
-```
-POST /medicines
-Body: {
-  "name": "Medicine Name",
-  "category": "Category",
-  "price": 10.99,
-  "stock_quantity": 100,
-  "expiry_date": "2025-12-31",
-  "supplier": "Supplier Name",
-  "description": "Description"
-}
-```
+- **In-Memory Storage**: All data is stored in JavaScript arrays in RAM
+- **Data Lifetime**: Data persists only while the Node.js server process is running
+- **Reset Behavior**: When the server restarts, all data resets to initial sample data
+- **No Database Required**: Perfect for development, testing, and demos
 
-**Update medicine**
-```
-PUT /medicines/{id}
-Body: (same as create, all fields optional)
-```
+### When Server Restarts, You Lose:
+- New medicines added
+- New customers created
+- Sales transactions made
+- Stock updates
 
-**Delete medicine**
-```
-DELETE /medicines/{id}
-```
+### Why In-Memory Storage?
 
-#### Customers
+**Advantages:**
+- ✅ Zero database setup
+- ✅ Instant deployment
+- ✅ Perfect for development and testing
+- ✅ Fast data access
+- ✅ No database maintenance
+- ✅ Easy to reset to clean state
 
-**List all customers**
-```
-GET /customers
-Query Parameters:
-  - page: Page number
-  - limit: Items per page
-  - search: Search term
-```
+**Best For:**
+- Development and testing
+- Demonstrations and prototypes
+- Educational purposes
+- Proof of concepts
+- Quick deployments
 
-**Get customer details**
-```
-GET /customers/{id}
-```
+### Migrating to Persistent Storage
 
-**Create customer**
-```
-POST /customers
-Body: {
-  "name": "Customer Name",
-  "phone": "+1234567890",
-  "email": "email@example.com",
-  "address": "Address"
-}
+To add permanent storage, you can easily integrate a database:
+
+**Option 1: MongoDB**
+```bash
+npm install mongoose
 ```
 
-**Update customer**
-```
-PUT /customers/{id}
-Body: (same as create, all fields optional)
-```
-
-**Delete customer**
-```
-DELETE /customers/{id}
+**Option 2: PostgreSQL**
+```bash
+npm install pg
 ```
 
-#### Sales
-
-**List all sales**
-```
-GET /sales
-Query Parameters:
-  - page: Page number
-  - limit: Items per page
-  - customer_id: Filter by customer
-  - payment_method: cash/card/insurance
-  - date_from: YYYY-MM-DD
-  - date_to: YYYY-MM-DD
+**Option 3: MySQL**
+```bash
+npm install mysql2
 ```
 
-**Get sale details**
-```
-GET /sales/{id}
-```
-
-**Create sale**
-```
-POST /sales
-Body: {
-  "customer_id": 1 (optional),
-  "payment_method": "cash",
-  "items": [
-    {
-      "medicine_id": 1,
-      "quantity": 2
-    }
-  ]
-}
-```
-
-#### Reports
-
-**Inventory report**
-```
-GET /reports/inventory
-```
-
-**Sales report**
-```
-GET /reports/sales
-Query Parameters:
-  - date_from: YYYY-MM-DD
-  - date_to: YYYY-MM-DD
-```
-
-**Expiring medicines**
-```
-GET /reports/expiring
-Query Parameters:
-  - days: Number of days (default: 90)
-```
-
-**Dashboard statistics**
-```
-GET /reports/dashboard
-```
+The modular structure makes it easy to replace the storage layer without changing the API routes.
 
 ## 🔒 Security Features
 
-### Implemented Security Measures
+### Implemented Security
+- ✅ Input validation on all endpoints
+- ✅ XSS protection with HTML escaping
+- ✅ CORS configuration
+- ✅ Error handling without sensitive info exposure
+- ✅ Type checking and sanitization
 
-1. **XSS Protection**
-   - HTML special characters encoding
-   - Content Security Policy headers
-
-2. **CORS Configuration**
-   - Configurable allowed origins
-   - Proper handling of preflight requests
-
-3. **Input Validation**
-   - Server-side validation for all inputs
-   - Type checking and range validation
-
-4. **Session Security**
-   - PHP session management
-   - Session data isolation
-
-### Additional Security Recommendations
-
-For production deployment:
-
-1. **Enable HTTPS**
-   ```bash
-   sudo apt install certbot python3-certbot-apache
-   sudo certbot --apache
-   ```
-
-2. **Implement Authentication**
-   - Add JWT or session-based authentication
-   - Protect API endpoints with middleware
-
-3. **Session Security**
-   - Use secure session cookies (httponly, secure flags)
-   - Implement session timeout
-   - Regenerate session IDs after login
-
-4. **Server Hardening**
-   - Keep software updated
-   - Configure firewall rules
-   - Disable directory listing
-   - Hide PHP version
-
-5. **Data Persistence**
-   - For production use, consider migrating to a database backend
-   - Implement regular session data backups if needed
-   - Use Redis or Memcached for distributed session storage
+### Additional Recommendations for Production
+1. Add authentication (JWT, OAuth)
+2. Implement rate limiting
+3. Use HTTPS/TLS encryption
+4. Add request logging and monitoring
+5. Implement API key authentication
+6. Add input sanitization middleware
+7. Set secure HTTP headers
 
 ## 🐛 Troubleshooting
 
-### Common Issues
+### Server Won't Start
 
-**1. Session Data Lost**
-```
-Error: Data disappears or resets unexpectedly
-```
-**Solution**: 
-- Check PHP session configuration: `session.gc_maxlifetime` in php.ini
-- Ensure session directory is writable: `/var/lib/php/sessions`
-- Verify session cookies are enabled in browser
-- Check if server was restarted (data resets on restart)
-
-**2. 404 Not Found for API Endpoints**
-```
-Error: 404 Not Found
-```
-**Solution**:
-- Ensure mod_rewrite is enabled: `sudo a2enmod rewrite`
-- Check `.htaccess` file exists in backend directory
-- Verify Apache configuration allows `.htaccess` overrides
-
-**3. CORS Errors**
-```
-Error: CORS policy blocked
-```
-**Solution**:
-- Update `backend/config/cors.php` with correct origins
-- Ensure CORS headers are being sent
-- Check browser console for specific CORS errors
-
-**4. Frontend Can't Connect to Backend**
-```
-Error: Failed to fetch
-```
-**Solution**:
-- Verify API_BASE_URL in `frontend/js/config.js`
-- Check if backend is accessible from browser
-- Look for network errors in browser developer tools
-
-**5. Permission Denied Errors**
-```
-Error: Permission denied
-```
-**Solution**:
+**Error: Port 3000 already in use**
 ```bash
-sudo chown -R www-data:www-data /var/www/html
-sudo chmod -R 755 /var/www/html
+# Find and kill process using port 3000
+lsof -ti:3000 | xargs kill -9
+
+# Or use a different port
+PORT=3001 npm start
 ```
 
-### Debug Mode
+### CORS Errors
 
-To enable error display for debugging (disable in production):
+**Error: Access-Control-Allow-Origin**
+- Ensure backend server is running
+- Check frontend config.js has correct API URL
+- Verify CORS middleware is loaded in server.js
 
-Edit `php.ini`:
-```ini
-display_errors = On
-error_reporting = E_ALL
-```
+### Frontend Can't Connect to Backend
 
-Or add to the top of PHP files:
-```php
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
-```
+**Check the following:**
+1. Backend server is running: `curl http://localhost:3000/api/health`
+2. Correct API URL in `frontend/js/config.js`
+3. No firewall blocking port 3000
+4. Browser console for specific error messages
 
-### Logs
+### Data Disappeared
 
-Check server logs for errors:
+**Reason:** Server restarted, data reset to initial state
+**Solution:** This is expected behavior with in-memory storage. For persistent data, integrate a database.
+
+### Module Not Found Error
+
 ```bash
-# Apache error log
-sudo tail -f /var/log/apache2/error.log
-
-# PHP error log
-sudo tail -f /var/log/php/error.log
-
-# Session directory (check permissions)
-ls -la /var/lib/php/sessions
+# Reinstall dependencies
+cd backend
+rm -rf node_modules package-lock.json
+npm install
 ```
+
+## 📊 Testing the API
+
+### Health Check
+```bash
+curl http://localhost:3000/api/health
+```
+
+### Get All Medicines
+```bash
+curl http://localhost:3000/api/medicines
+```
+
+### Create a Sale
+```bash
+curl -X POST http://localhost:3000/api/sales \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customerId": 1,
+    "paymentMethod": "Cash",
+    "items": [{"medicineId": 1, "quantity": 2}]
+  }'
+```
+
+### Check Dashboard Stats
+```bash
+curl http://localhost:3000/api/reports/dashboard
+```
+
+## 🎨 Frontend Pages
+
+1. **Dashboard (index.html)** - Overview with statistics and quick actions
+2. **Inventory (inventory.html)** - Manage medicines with full CRUD operations
+3. **Sales (sales.html)** - Point-of-sale system with cart functionality
+4. **Customers (customers.html)** - Customer management with purchase history
+5. **Reports (reports.html)** - Analytics and reports
+
+## 📝 Future Enhancements
+
+- [ ] Add user authentication and authorization
+- [ ] Implement persistent database storage
+- [ ] Add export functionality (PDF, Excel)
+- [ ] Implement barcode scanning for medicines
+- [ ] Add prescription management
+- [ ] Email notifications for low stock and expiring medicines
+- [ ] Multi-pharmacy branch support
+- [ ] Advanced analytics and charts
+- [ ] Mobile app (React Native)
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ## 📞 Support
 
 For issues, questions, or contributions:
 - GitHub Issues: [Create an issue](https://github.com/youssef3fifi/jomanah-project/issues)
-- Email: support@pharmacare.com
-
-## 📄 License
-
-This project is licensed under the MIT License.
+- Email: support@pharmacy.com
 
 ## 🙏 Acknowledgments
 
@@ -562,4 +599,4 @@ Built with ❤️ for efficient pharmacy management.
 
 ---
 
-**Note**: This is a demonstration system. For production use, implement additional security measures, authentication, and regular security audits.
+**Note**: This system uses in-memory storage for simplicity. For production use with permanent data storage, integrate a database (MongoDB, PostgreSQL, MySQL) following the same API structure.
